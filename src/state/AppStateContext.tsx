@@ -259,6 +259,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
           name: input.name,
           birthDate: input.birthDate,
           dueDate: input.dueDate,
+          profilePhotoPath: input.profilePhotoPath,
           settings: input.settings,
           createdAt,
         };
