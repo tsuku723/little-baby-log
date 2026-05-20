@@ -28,6 +28,7 @@ export type UserProfile = {
   name: string;
   birthDate: string;
   dueDate: string | null;
+  profilePhotoPath?: string;
   settings: UserSettings;
   createdAt: string;
 };
