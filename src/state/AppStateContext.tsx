@@ -80,6 +80,8 @@ type AppStateContextValue = {
   ) => Promise<void>;
 };
 
+export const MAX_PROFILES = 5;
+
 const APP_STATE_KEY = "little_baby_calendar_app_state";
 
 const EMPTY_STATE: AppState = {
@@ -251,6 +253,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
   const addUser = useCallback(
     async (input: NewUserInput) => {
       await updateState((prev) => {
+        if (prev.users.length >= MAX_PROFILES) return prev;
         const userId = input.id ?? uuid();
         const createdAt = input.createdAt ?? new Date().toISOString();
         const profile: UserProfile = {
