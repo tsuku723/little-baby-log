@@ -276,8 +276,9 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
       <TouchableOpacity
         style={styles.fab}
         accessibilityRole="button"
-        // Phase 1: FAB は記録入力画面への入口だけを保持
-        onPress={() => rootNavigation.navigate("RecordInput")}
+        onPress={() =>
+          rootNavigation.navigate("RecordInput", { isoDate: todayIso })
+        }
       >
         <Text style={styles.fabText}>＋記録</Text>
       </TouchableOpacity>
