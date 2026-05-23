@@ -17,6 +17,7 @@ import CalendarDecorations from "@/components/CalendarDecorations";
 import DatePickerModal from "@/components/DatePickerModal";
 import MonthHeader from "@/components/MonthHeader";
 import AppText from "@/components/AppText";
+import UserAvatar from "@/components/UserAvatar";
 import {
   CalendarStackParamList,
   RootStackParamList,
@@ -203,9 +204,23 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
       </View>
       <CalendarDecorations topOffset={insets.top} />
       <View style={styles.fixedHeader}>
-        <AppText style={styles.headerName} weight="medium">
-          {user?.name ?? "プロフィール未設定"}
-        </AppText>
+        <View style={styles.headerNameRow}>
+          {user ? (
+            <UserAvatar
+              name={user.name}
+              profilePhotoPath={user.profilePhotoPath}
+              onPress={() =>
+                rootNavigation.navigate("SettingsStack", {
+                  screen: "ProfileEdit",
+                  params: { profileId: user.id },
+                })
+              }
+            />
+          ) : null}
+          <AppText style={styles.headerName} weight="medium">
+            {user?.name ?? "プロフィール未設定"}
+          </AppText>
+        </View>
         {todayAgeInfo ? (
           <View style={styles.headerAgeBlock}>
             <View style={styles.headerAgeRow}>
@@ -316,6 +331,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: COLORS.headerBackground,
     gap: 4,
+  },
+  headerNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   scroll: {
     backgroundColor: COLORS.background,

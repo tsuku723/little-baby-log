@@ -35,6 +35,7 @@ import {
 } from "@/navigation";
 import AgeBadge from "@/components/AgeBadge";
 import AppText from "@/components/AppText";
+import UserAvatar from "@/components/UserAvatar";
 import { useActiveUser } from "@/state/AppStateContext";
 import { useAchievements } from "@/state/AchievementsContext";
 import { useDateViewContext } from "@/state/DateViewContext";
@@ -333,9 +334,21 @@ const TodayScreen: React.FC<Props> = ({
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <AppText style={styles.headerName} weight="medium">
-          {user.name}
-        </AppText>
+        <View style={styles.headerNameRow}>
+          <UserAvatar
+            name={user.name}
+            profilePhotoPath={user.profilePhotoPath}
+            onPress={() =>
+              rootNavigation.navigate("SettingsStack", {
+                screen: "ProfileEdit",
+                params: { profileId: user.id },
+              })
+            }
+          />
+          <AppText style={styles.headerName} weight="medium">
+            {user.name}
+          </AppText>
+        </View>
         {todayAgeInfo ? (
           <View style={styles.headerAgeBlock}>
             <View style={styles.headerAgeRow}>
@@ -558,6 +571,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: COLORS.headerBackground,
     gap: 4,
+  },
+  headerNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   headerName: {
     fontSize: 20,

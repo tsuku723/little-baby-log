@@ -57,6 +57,15 @@ jest.mock("@/components/MonthHeader", () => ({
   default: () => null,
 }));
 
+jest.mock("@/components/UserAvatar", () => ({
+  __esModule: true,
+  default: ({ name }: any) => {
+    const React = require("react");
+    const { Text } = require("react-native");
+    return React.createElement(Text, {}, `avatar:${name}`);
+  },
+}));
+
 const mockNavigation = { push: jest.fn() };
 const mockRoute = { params: {} };
 
@@ -138,6 +147,50 @@ describe("CalendarScreen UI (TS-UI-003)", () => {
     expect(tree.toJSON()).not.toBeNull();
     const json = JSON.stringify(tree.toJSON());
     expect(json).toContain("年齢情報は設定済みのプロフィールで表示されます");
+  });
+
+  test("user あり: UserAvatar が名前付きで描画される", async () => {
+    mockActiveUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-06-01",
+      dueDate: null,
+      profilePhotoPath: "/path/to/photo.jpg",
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd" as const,
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+      },
+    };
+    const CalendarScreen = require("../src/screens/CalendarScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(CalendarScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain("avatar:テストちゃん");
+  });
+
+  test("user=null: UserAvatar が描画されない", async () => {
+    mockActiveUser = null;
+    const CalendarScreen = require("../src/screens/CalendarScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(CalendarScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).not.toContain("avatar:");
   });
 
   test("FABボタン（＋記録）が描画される", async () => {
