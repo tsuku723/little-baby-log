@@ -28,6 +28,7 @@ export type UserProfile = {
   name: string;
   birthDate: string;
   dueDate: string | null;
+  profilePhotoPath?: string;
   settings: UserSettings;
   createdAt: string;
 };
@@ -261,6 +262,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
           name: input.name,
           birthDate: input.birthDate,
           dueDate: input.dueDate,
+          profilePhotoPath: input.profilePhotoPath,
           settings: input.settings,
           createdAt,
         };

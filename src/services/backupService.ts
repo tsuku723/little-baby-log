@@ -54,11 +54,16 @@ export const createBackup = async (
     }));
   }
 
+  const exportedProfiles = profiles.map((p) => ({
+    ...p,
+    profilePhotoPath: undefined,
+  }));
+
   const backupData: BackupData = {
     version: BACKUP_FORMAT_VERSION,
     appVersion: APP_VERSION,
     exportedAt,
-    profiles,
+    profiles: exportedProfiles,
     achievements: exportedAchievements,
   };
 
