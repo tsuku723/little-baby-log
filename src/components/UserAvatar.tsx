@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { COLORS } from "@/constants/colors";
 
@@ -16,17 +16,29 @@ const UserAvatar: React.FC<Props> = ({
   size = 40,
 }) => {
   const borderRadius = size / 2;
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [profilePhotoPath]);
+
+  const label = name.trim()
+    ? `${name.trim()}のプロフィールを編集`
+    : "プロフィールを編集";
+
+  const showImage = Boolean(profilePhotoPath) && !imageError;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="プロフィールを編集"
+      accessibilityLabel={label}
     >
-      {profilePhotoPath ? (
+      {showImage ? (
         <Image
           source={{ uri: profilePhotoPath }}
           style={{ width: size, height: size, borderRadius }}
+          onError={() => setImageError(true)}
         />
       ) : (
         <View
