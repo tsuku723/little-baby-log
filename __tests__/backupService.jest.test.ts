@@ -146,6 +146,31 @@ describe("BackupService", () => {
     expect(uri).toContain("file:///cache/");
   });
 
+  test("プロフィール写真が存在する場合は photos/ に格納し profilePhotoPath を ZIP 内パスに変換する", async () => {
+    const { createBackup } = require("../src/services/backupService");
+    mockGetInfoAsync.mockResolvedValue({ exists: true });
+    mockReadAsStringAsync.mockResolvedValue("base64profilephoto");
+
+    const profileWithPhoto = {
+      ...baseProfile,
+      profilePhotoPath: "file:///documents/profile_u1.jpg",
+    };
+
+    await createBackup([profileWithPhoto], { u1: [baseAchievement] });
+
+    expect(mockZipInstance.file).toHaveBeenCalledWith(
+      "photos/profile_u1.jpg",
+      "base64profilephoto",
+      { base64: true }
+    );
+
+    const [, jsonString] = mockZipInstance.file.mock.calls.find(
+      ([name]: [string]) => name === "backup.json"
+    );
+    const parsed = JSON.parse(jsonString);
+    expect(parsed.profiles[0].profilePhotoPath).toBe("photos/profile_u1.jpg");
+  });
+
   test("同一写真パスは一度だけ ZIP に追加される", async () => {
     const { createBackup } = require("../src/services/backupService");
     mockGetInfoAsync.mockResolvedValue({ exists: true });
@@ -208,7 +233,7 @@ describe("BackupService", () => {
       expect(result.achievements.u1[0].title).toBe("はじめての笑顔");
     });
 
-    test("正常系: ZIP 内に写真がある場合 documentDirectory/photos/ に保存し photoPath をローカルパスに書き換える", async () => {
+    test("正常系: ZIP 内に写真がある場合 documentDirectory/achievement-photos/ に保存し photoPath をローカルパスに書き換える", async () => {
       const { restoreBackup } = require("../src/services/backupService");
       const achievementWithPhoto = {
         ...baseAchievement,
@@ -228,12 +253,12 @@ describe("BackupService", () => {
       const result = await restoreBackup("file:///cache/backup.zip");
 
       expect(mockWriteAsStringAsync).toHaveBeenCalledWith(
-        "file:///documents/photos/photo_a1.jpg",
+        "file:///documents/achievement-photos/photo_a1.jpg",
         "base64photo",
         { encoding: "base64" }
       );
       expect(result.achievements.u1[0].photoPath).toBe(
-        "file:///documents/photos/photo_a1.jpg"
+        "file:///documents/achievement-photos/photo_a1.jpg"
       );
     });
 

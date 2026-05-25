@@ -69,18 +69,18 @@ describe("restoreBackup（実ZIPフィクスチャ）", () => {
       expect(result.achievements.u1[2].title).toBe("寝返り成功！");
     });
 
-    test("03: 写真あり — documentDirectory/photos/ に保存しローカルパスに変換", async () => {
+    test("03: 写真あり — documentDirectory/achievement-photos/ に保存しローカルパスに変換", async () => {
       setupFile("valid_single_child_with_photo.zip");
 
       const result = await restoreBackup("file:///any.zip");
 
       expect(mockWriteAsStringAsync).toHaveBeenCalledWith(
-        "file:///documents/photos/photo_a1.jpg",
+        "file:///documents/achievement-photos/photo_a1.jpg",
         expect.any(String),
         { encoding: "base64" }
       );
       expect(result.achievements.u1[0].photoPath).toBe(
-        "file:///documents/photos/photo_a1.jpg"
+        "file:///documents/achievement-photos/photo_a1.jpg"
       );
     });
 
@@ -141,10 +141,10 @@ describe("restoreBackup（実ZIPフィクスチャ）", () => {
       const result = await restoreBackup("file:///any.zip");
 
       expect(result.achievements.u1[0].photoPath).toBe(
-        "file:///documents/photos/shared.jpg"
+        "file:///documents/achievement-photos/shared.jpg"
       );
       expect(result.achievements.u1[1].photoPath).toBe(
-        "file:///documents/photos/shared.jpg"
+        "file:///documents/achievement-photos/shared.jpg"
       );
     });
 
