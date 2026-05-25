@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Image,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -20,7 +21,16 @@ import { COLORS } from "@/constants/colors";
 import { UserSettings } from "@/models/dataModels";
 import { SettingsStackParamList } from "@/navigation";
 import { useAppState } from "@/state/AppStateContext";
-import { isIsoDateString, safeParseIsoLocal, toIsoDateString } from "@/utils/dateUtils";
+import {
+  isIsoDateString,
+  safeParseIsoLocal,
+  toIsoDateString,
+} from "@/utils/dateUtils";
+import {
+  PhotoPermissionDeniedError,
+  deleteIfExistsAsync,
+  pickAndSaveProfilePhotoAsync,
+} from "@/utils/photo";
 
 type Props = NativeStackScreenProps<SettingsStackParamList, "ProfileEdit">;
 
@@ -28,12 +38,14 @@ type FormState = {
   name: string;
   birthDate: string;
   dueDate: string;
+  profilePhotoPath?: string;
 };
 
 const createEmptyForm = (): FormState => ({
   name: "",
   birthDate: toIsoDateString(new Date()),
   dueDate: "",
+  profilePhotoPath: undefined,
 });
 
 const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -41,7 +53,10 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const { users } = state;
   const profileId = route.params?.profileId;
 
-  const existing = useMemo(() => users.find((u) => u.id === profileId), [users, profileId]);
+  const existing = useMemo(
+    () => users.find((u) => u.id === profileId),
+    [users, profileId]
+  );
 
   const [formState, setFormState] = useState<FormState>(() => {
     if (existing) {
@@ -49,6 +64,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name: existing.name,
         birthDate: existing.birthDate,
         dueDate: existing.dueDate ?? "",
+        profilePhotoPath: existing.profilePhotoPath,
       };
     }
     return createEmptyForm();
@@ -64,7 +80,8 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     };
   });
 
-  const startOfLocalDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const startOfLocalDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const cloneDate = (d: Date) => new Date(d.getTime());
   const sanitizePickerDate = (date: Date, fallback: Date) => {
     if (Number.isNaN(date.getTime())) return cloneDate(fallback);
@@ -80,9 +97,13 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const MIN_DATE = useMemo(() => new Date(1900, 0, 1), []);
   const MAX_DUE_DATE = useMemo(() => new Date(2100, 11, 31), []);
 
-  const [activeDateField, setActiveDateField] = useState<"birth" | "due" | null>(null);
+  const [activeDateField, setActiveDateField] = useState<
+    "birth" | "due" | null
+  >(null);
   const [isDateModalVisible, setDateModalVisible] = useState(false);
-  const [tempDate, setTempDate] = useState<Date>(() => safeDate(formState.birthDate, today));
+  const [tempDate, setTempDate] = useState<Date>(() =>
+    safeDate(formState.birthDate, today)
+  );
 
   useLayoutEffect(() => {
     const parent = navigation.getParent();
@@ -98,6 +119,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name: existing.name,
         birthDate: existing.birthDate,
         dueDate: existing.dueDate ?? "",
+        profilePhotoPath: existing.profilePhotoPath,
       });
       setDraftSettings({ ...existing.settings });
     } else {
@@ -117,10 +139,46 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     return Boolean(name) && isIsoDateString(birthDate);
   }, [formState.birthDate, formState.name]);
 
+  const handlePickPhoto = async () => {
+    try {
+      const newPath = await pickAndSaveProfilePhotoAsync();
+      if (!newPath) return;
+      const prev = formState.profilePhotoPath;
+      if (prev && prev !== existing?.profilePhotoPath) {
+        await deleteIfExistsAsync(prev);
+      }
+      setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
+    } catch (e) {
+      if (e instanceof PhotoPermissionDeniedError) {
+        Alert.alert(
+          "アクセス許可が必要です",
+          "設定からフォトライブラリへのアクセスを許可してください。"
+        );
+      }
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    const current = formState.profilePhotoPath;
+    if (current && current !== existing?.profilePhotoPath) {
+      await deleteIfExistsAsync(current);
+    }
+    setFormState((s) => ({ ...s, profilePhotoPath: undefined }));
+  };
+
+  const handleCancel = async () => {
+    const current = formState.profilePhotoPath;
+    if (current && current !== existing?.profilePhotoPath) {
+      await deleteIfExistsAsync(current);
+    }
+    navigation.goBack();
+  };
+
   const handleSave = async () => {
     const name = formState.name.trim();
     const birthDate = formState.birthDate.trim();
     const dueDate = formState.dueDate.trim() || null;
+    const profilePhotoPath = formState.profilePhotoPath ?? null;
 
     if (!name || !birthDate) {
       Alert.alert("入力エラー", "名前と生年月日は必須です。");
@@ -128,10 +186,17 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     if (existing) {
+      if (
+        existing.profilePhotoPath &&
+        existing.profilePhotoPath !== profilePhotoPath
+      ) {
+        await deleteIfExistsAsync(existing.profilePhotoPath);
+      }
       await updateUser(existing.id, {
         name,
         birthDate,
         dueDate,
+        profilePhotoPath: profilePhotoPath ?? undefined,
         settings: draftSettings,
       });
     } else {
@@ -139,6 +204,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name,
         birthDate,
         dueDate,
+        profilePhotoPath: profilePhotoPath ?? undefined,
         settings: draftSettings,
       });
     }
@@ -148,7 +214,10 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const openDatePicker = (field: "birth" | "due") => {
     setActiveDateField(field);
-    const nextTempDate = field === "birth" ? safeDate(formState.birthDate, today) : safeDate(formState.dueDate, today);
+    const nextTempDate =
+      field === "birth"
+        ? safeDate(formState.birthDate, today)
+        : safeDate(formState.dueDate, today);
     setTempDate(sanitizePickerDate(nextTempDate, today));
     setDateModalVisible(true);
   };
@@ -158,16 +227,25 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     setActiveDateField(null);
   };
 
-  const pickerValue = useMemo(() => sanitizePickerDate(tempDate, today), [tempDate, today]);
+  const pickerValue = useMemo(
+    () => sanitizePickerDate(tempDate, today),
+    [tempDate, today]
+  );
 
   const handleDateConfirm = (date: Date) => {
     if (!activeDateField) return;
     const finalDate = sanitizePickerDate(date, today);
     setTempDate(finalDate);
     if (activeDateField === "birth") {
-      setFormState((prev) => ({ ...prev, birthDate: toIsoDateString(finalDate) }));
+      setFormState((prev) => ({
+        ...prev,
+        birthDate: toIsoDateString(finalDate),
+      }));
     } else {
-      setFormState((prev) => ({ ...prev, dueDate: toIsoDateString(finalDate) }));
+      setFormState((prev) => ({
+        ...prev,
+        dueDate: toIsoDateString(finalDate),
+      }));
     }
     closeDatePicker();
   };
@@ -184,6 +262,11 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         text: "削除",
         style: "destructive",
         onPress: async () => {
+          const achievementPhotos = (state.achievements[existing.id] ?? [])
+            .map((a) => a.photoPath)
+            .filter(Boolean) as string[];
+          await Promise.all(achievementPhotos.map(deleteIfExistsAsync));
+          await deleteIfExistsAsync(existing.profilePhotoPath);
           await deleteUser(existing.id);
           navigation.popToTop();
         },
@@ -198,7 +281,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerLeft}
-          onPress={() => navigation.goBack()}
+          onPress={handleCancel}
           accessibilityRole="button"
         >
           <Text style={styles.headerLeftText}>キャンセル</Text>
@@ -212,11 +295,46 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.avatarSection}>
+          <TouchableOpacity
+            onPress={handlePickPhoto}
+            style={styles.avatarContainer}
+            accessibilityRole="button"
+            accessibilityLabel="プロフィール写真を選択"
+          >
+            {formState.profilePhotoPath ? (
+              <Image
+                source={{ uri: formState.profilePhotoPath }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarPlaceholderText}>
+                  {formState.name.trim() ? formState.name.trim()[0] : "+"}
+                </Text>
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              <Text style={styles.avatarEditBadgeText}>編集</Text>
+            </View>
+          </TouchableOpacity>
+          {formState.profilePhotoPath ? (
+            <TouchableOpacity
+              onPress={handleRemovePhoto}
+              accessibilityRole="button"
+            >
+              <Text style={styles.removePhotoText}>写真を削除</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
         <View style={styles.field}>
           <Text style={styles.label}>名前</Text>
           <TextInput
             value={formState.name}
-            onChangeText={(text) => setFormState((prev) => ({ ...prev, name: text }))}
+            onChangeText={(text) =>
+              setFormState((prev) => ({ ...prev, name: text }))
+            }
             style={styles.input}
             placeholder="お名前"
           />
@@ -248,7 +366,9 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>こども表示設定</Text>
-          <Text style={styles.description}>ここで変更した設定は、「保存」を押すまで反映されません。</Text>
+          <Text style={styles.description}>
+            ここで変更した設定は、「保存」を押すまで反映されません。
+          </Text>
 
           <View style={styles.field}>
             <Text style={styles.label}>修正月齢の表示上限</Text>
@@ -262,16 +382,21 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
                   key={option.label}
                   style={[
                     styles.optionButton,
-                    draftSettings.showCorrectedUntilMonths === option.value && styles.optionButtonSelected,
+                    draftSettings.showCorrectedUntilMonths === option.value &&
+                      styles.optionButtonSelected,
                   ]}
                   onPress={() =>
-                    setDraftSettings((prev) => ({ ...prev, showCorrectedUntilMonths: option.value }))
+                    setDraftSettings((prev) => ({
+                      ...prev,
+                      showCorrectedUntilMonths: option.value,
+                    }))
                   }
                 >
                   <Text
                     style={[
                       styles.optionLabel,
-                      draftSettings.showCorrectedUntilMonths === option.value && styles.optionLabelSelected,
+                      draftSettings.showCorrectedUntilMonths === option.value &&
+                        styles.optionLabelSelected,
                     ]}
                   >
                     {option.label}
@@ -280,7 +405,6 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
               ))}
             </View>
           </View>
-
 
           <View style={styles.field}>
             <Text style={styles.label}>月齢表記</Text>
@@ -291,11 +415,24 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
               ].map((option) => (
                 <Pressable
                   key={option.value}
-                  style={[styles.optionButton, draftSettings.ageFormat === option.value && styles.optionButtonSelected]}
-                  onPress={() => setDraftSettings((prev) => ({ ...prev, ageFormat: option.value as UserSettings["ageFormat"] }))}
+                  style={[
+                    styles.optionButton,
+                    draftSettings.ageFormat === option.value &&
+                      styles.optionButtonSelected,
+                  ]}
+                  onPress={() =>
+                    setDraftSettings((prev) => ({
+                      ...prev,
+                      ageFormat: option.value as UserSettings["ageFormat"],
+                    }))
+                  }
                 >
                   <Text
-                    style={[styles.optionLabel, draftSettings.ageFormat === option.value && styles.optionLabelSelected]}
+                    style={[
+                      styles.optionLabel,
+                      draftSettings.ageFormat === option.value &&
+                        styles.optionLabelSelected,
+                    ]}
                   >
                     {option.label}
                   </Text>
@@ -307,24 +444,41 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.field}>
             <Text style={styles.label}>生まれてからの日数表示</Text>
             <View style={styles.switchRow}>
-              <Text style={styles.optionLabel}>{draftSettings.showDaysSinceBirth ? "ON" : "OFF"}</Text>
+              <Text style={styles.optionLabel}>
+                {draftSettings.showDaysSinceBirth ? "ON" : "OFF"}
+              </Text>
               <Switch
                 value={draftSettings.showDaysSinceBirth}
-                onValueChange={(value) => setDraftSettings((prev) => ({ ...prev, showDaysSinceBirth: value }))}
+                onValueChange={(value) =>
+                  setDraftSettings((prev) => ({
+                    ...prev,
+                    showDaysSinceBirth: value,
+                  }))
+                }
               />
             </View>
           </View>
 
           <View style={styles.notesBox}>
-            <Text style={styles.noteText}>・予定日は妊娠40週0日（280日）相当として扱います</Text>
-            <Text style={styles.noteText}>・予定日前は修正月齢が負になり得るため、本アプリでは在胎週数で表示します</Text>
-            <Text style={styles.noteText}>・表示は目安であり医療判断ではありません</Text>
+            <Text style={styles.noteText}>
+              ・予定日は妊娠40週0日（280日）相当として扱います
+            </Text>
+            <Text style={styles.noteText}>
+              ・予定日前は修正月齢が負になり得るため、本アプリでは在胎週数で表示します
+            </Text>
+            <Text style={styles.noteText}>
+              ・表示は目安であり医療判断ではありません
+            </Text>
           </View>
         </View>
       </ScrollView>
       <View style={styles.fixedActions}>
         <TouchableOpacity
-          style={[styles.actionButton, styles.saveButton, !isFormValid && styles.saveButtonDisabled]}
+          style={[
+            styles.actionButton,
+            styles.saveButton,
+            !isFormValid && styles.saveButtonDisabled,
+          ]}
           onPress={handleSave}
           accessibilityRole="button"
           disabled={!isFormValid}
@@ -333,12 +487,18 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         </TouchableOpacity>
         {existing ? (
           <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton, users.length <= 1 && styles.deleteButtonDisabled]}
+            style={[
+              styles.actionButton,
+              styles.deleteButton,
+              users.length <= 1 && styles.deleteButtonDisabled,
+            ]}
             onPress={handleDelete}
             disabled={users.length <= 1}
             accessibilityRole="button"
           >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>このプロフィールを削除する</Text>
+            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
+              このプロフィールを削除する
+            </Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -389,6 +549,50 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     gap: 16,
+  },
+  avatarSection: {
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 8,
+  },
+  avatarContainer: {
+    position: "relative",
+  },
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  avatarPlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: COLORS.highlightToday,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarPlaceholderText: {
+    fontSize: 32,
+    color: COLORS.textPrimary,
+    fontWeight: "600",
+  },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.headerBackground,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  avatarEditBadgeText: {
+    fontSize: 11,
+    color: COLORS.textPrimary,
+    fontWeight: "600",
+  },
+  removePhotoText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
   },
   field: {
     gap: 8,
