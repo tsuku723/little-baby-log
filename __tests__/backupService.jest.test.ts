@@ -228,12 +228,12 @@ describe("BackupService", () => {
       const result = await restoreBackup("file:///cache/backup.zip");
 
       expect(mockWriteAsStringAsync).toHaveBeenCalledWith(
-        "file:///documents/photos/photo_a1.jpg",
+        "file:///documents/achievement-photos/photo_a1.jpg",
         "base64photo",
         { encoding: "base64" }
       );
       expect(result.achievements.u1[0].photoPath).toBe(
-        "file:///documents/photos/photo_a1.jpg"
+        "file:///documents/achievement-photos/photo_a1.jpg"
       );
     });
 

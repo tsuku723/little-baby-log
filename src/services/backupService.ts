@@ -160,7 +160,7 @@ export const restoreBackup = async (
     throw new Error("未対応のバックアップ形式です");
   }
 
-  const photosDir = `${FileSystem.documentDirectory}photos/`;
+  const photosDir = `${FileSystem.documentDirectory}achievement-photos/`;
   await FileSystem.makeDirectoryAsync(photosDir, { intermediates: true });
 
   const restoredAchievements: Record<string, Achievement[]> = {};
