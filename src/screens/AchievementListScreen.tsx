@@ -319,7 +319,7 @@ const AchievementListScreen: React.FC<Props> = () => {
                 params: { profileId: user.id },
               })
             }
-            size={52}
+            size={64}
           />
         ) : null}
         <View style={styles.headerInfo}>

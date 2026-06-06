@@ -214,7 +214,7 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
                 params: { profileId: user.id },
               })
             }
-            size={52}
+            size={64}
           />
         ) : null}
         <View style={styles.headerInfo}>

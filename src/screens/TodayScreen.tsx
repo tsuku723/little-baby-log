@@ -343,7 +343,7 @@ const TodayScreen: React.FC<Props> = ({
               params: { profileId: user.id },
             })
           }
-          size={52}
+          size={64}
         />
         <View style={styles.headerInfo}>
           <AppText style={styles.headerName} weight="medium">
