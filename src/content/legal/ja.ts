@@ -3,10 +3,9 @@ export const LEGAL_META = {
   operatorName: "Teeda Studio",
   contactEmail: "teeda.studio@gmail.com",
   effectiveDate: "2026年3月15日",
-  initialVersionLabel: "Version 1.0.0",
 } as const;
 
-export const ABOUT_TEXT_JA = `# このアプリについて
+export const getAboutTextJa = (version: string) => `# このアプリについて
 
 「リトルベビーログ」は、早産で生まれたお子さまの修正月齢を確認しながら、日々の成長や小さな出来事を記録できるアプリです。
 
@@ -74,7 +73,7 @@ teeda.studio@gmail.com
 
 ## バージョン
 
-Version 1.0.0
+Version ${version}
 `;
 
 export const TERMS_TEXT_JA = `# 利用規約
