@@ -54,6 +54,15 @@ jest.mock("@/components/AgeBadge", () => ({
   default: () => null,
 }));
 
+jest.mock("@/components/UserAvatar", () => ({
+  __esModule: true,
+  default: ({ name }: any) => {
+    const React = require("react");
+    const { Text } = require("react-native");
+    return React.createElement(Text, {}, `avatar:${name}`);
+  },
+}));
+
 jest.mock("@/components/AppText", () => {
   const React = require("react");
   const { Text } = require("react-native");
@@ -187,6 +196,34 @@ describe("TodayScreen UI (TS-UI-004)", () => {
     });
     const json = JSON.stringify(tree.toJSON());
     expect(json).toContain("初めての笑顔");
+  });
+
+  test("user あり: UserAvatar が名前付きで描画される", async () => {
+    mockActiveUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      profilePhotoPath: "/path/to/photo.jpg",
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd",
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+      },
+    };
+    const TodayScreen = require("../src/screens/TodayScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(TodayScreen, {
+          navigation: mockStackNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain("avatar:テストちゃん");
   });
 
   test("ローディング中: 読み込み中...を表示", async () => {

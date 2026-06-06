@@ -28,6 +28,7 @@ export type UserProfile = {
   name: string;
   birthDate: string;
   dueDate: string | null;
+  profilePhotoPath?: string;
   settings: UserSettings;
   createdAt: string;
 };
@@ -79,6 +80,8 @@ type AppStateContextValue = {
     achievements: Record<string, Achievement[]>
   ) => Promise<void>;
 };
+
+export const MAX_PROFILES = 5;
 
 const APP_STATE_KEY = "little_baby_calendar_app_state";
 
@@ -251,6 +254,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
   const addUser = useCallback(
     async (input: NewUserInput) => {
       await updateState((prev) => {
+        if (prev.users.length >= MAX_PROFILES) return prev;
         const userId = input.id ?? uuid();
         const createdAt = input.createdAt ?? new Date().toISOString();
         const profile: UserProfile = {
@@ -258,6 +262,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
           name: input.name,
           birthDate: input.birthDate,
           dueDate: input.dueDate,
+          profilePhotoPath: input.profilePhotoPath,
           settings: input.settings,
           createdAt,
         };

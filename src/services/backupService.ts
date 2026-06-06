@@ -26,22 +26,36 @@ export const createBackup = async (
 
   const photoMap: Record<string, string> = {};
 
+  const addPhotoToZip = async (originalPath: string, fallbackName: string) => {
+    if (photoMap[originalPath]) return;
+    const filename = originalPath.split("/").pop() ?? fallbackName;
+    const zipPath = `photos/${filename}`;
+    photoMap[originalPath] = zipPath;
+    const fileInfo = await FileSystem.getInfoAsync(originalPath);
+    if (fileInfo.exists) {
+      const base64 = await FileSystem.readAsStringAsync(originalPath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      zip.file(zipPath, base64, { base64: true });
+    }
+  };
+
+  for (const profile of profiles) {
+    if (profile.profilePhotoPath) {
+      await addPhotoToZip(
+        profile.profilePhotoPath,
+        `profile_${profile.id}.jpg`
+      );
+    }
+  }
+
   for (const records of Object.values(achievements)) {
     for (const achievement of records) {
-      if (achievement.photoPath && !photoMap[achievement.photoPath]) {
-        const originalPath = achievement.photoPath;
-        const filename =
-          originalPath.split("/").pop() ?? `photo_${achievement.id}.jpg`;
-        const zipPath = `photos/${filename}`;
-        photoMap[originalPath] = zipPath;
-
-        const fileInfo = await FileSystem.getInfoAsync(originalPath);
-        if (fileInfo.exists) {
-          const base64 = await FileSystem.readAsStringAsync(originalPath, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          zip.file(zipPath, base64, { base64: true });
-        }
+      if (achievement.photoPath) {
+        await addPhotoToZip(
+          achievement.photoPath,
+          `photo_${achievement.id}.jpg`
+        );
       }
     }
   }
@@ -54,11 +68,18 @@ export const createBackup = async (
     }));
   }
 
+  const exportedProfiles = profiles.map((p) => ({
+    ...p,
+    profilePhotoPath: p.profilePhotoPath
+      ? photoMap[p.profilePhotoPath]
+      : undefined,
+  }));
+
   const backupData: BackupData = {
     version: BACKUP_FORMAT_VERSION,
     appVersion: APP_VERSION,
     exportedAt,
-    profiles,
+    profiles: exportedProfiles,
     achievements: exportedAchievements,
   };
 
@@ -160,7 +181,7 @@ export const restoreBackup = async (
     throw new Error("未対応のバックアップ形式です");
   }
 
-  const photosDir = `${FileSystem.documentDirectory}photos/`;
+  const photosDir = `${FileSystem.documentDirectory}achievement-photos/`;
   await FileSystem.makeDirectoryAsync(photosDir, { intermediates: true });
 
   const restoredAchievements: Record<string, Achievement[]> = {};
@@ -187,5 +208,31 @@ export const restoreBackup = async (
     );
   }
 
-  return { profiles: backupData.profiles, achievements: restoredAchievements };
+  const profilePhotosDir = `${FileSystem.documentDirectory}profile-photos/`;
+  await FileSystem.makeDirectoryAsync(profilePhotosDir, {
+    intermediates: true,
+  });
+
+  const restoredProfiles = await Promise.all(
+    backupData.profiles.map(async (profile) => {
+      if (!profile.profilePhotoPath) return profile;
+
+      const zipPath = profile.profilePhotoPath;
+      const filename = zipPath.split("/").pop() ?? "";
+      const localPath = `${profilePhotosDir}${filename}`;
+
+      const photoFile = zip.file(zipPath);
+      if (photoFile) {
+        const base64 = await photoFile.async("base64");
+        await FileSystem.writeAsStringAsync(localPath, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        return { ...profile, profilePhotoPath: localPath };
+      }
+
+      return { ...profile, profilePhotoPath: undefined };
+    })
+  );
+
+  return { profiles: restoredProfiles, achievements: restoredAchievements };
 };

@@ -10,10 +10,12 @@ export class PhotoPermissionDeniedError extends Error {
 }
 
 const PHOTO_DIR = `${FileSystem.documentDirectory}achievement-photos/`;
+const PROFILE_PHOTO_DIR = `${FileSystem.documentDirectory}profile-photos/`;
 const MAX_LONG_EDGE = 1600;
 const JPEG_QUALITY = 0.75;
 
-const isSafePhotoPath = (path: string): boolean => path.startsWith(PHOTO_DIR);
+const isSafePhotoPath = (path: string): boolean =>
+  path.startsWith(PHOTO_DIR) || path.startsWith(PROFILE_PHOTO_DIR);
 
 const ensurePhotoDirAsync = async () => {
   const dirInfo = await FileSystem.getInfoAsync(PHOTO_DIR);
@@ -22,9 +24,23 @@ const ensurePhotoDirAsync = async () => {
   }
 };
 
+const ensureProfilePhotoDirAsync = async () => {
+  const dirInfo = await FileSystem.getInfoAsync(PROFILE_PHOTO_DIR);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(PROFILE_PHOTO_DIR, {
+      intermediates: true,
+    });
+  }
+};
+
 const buildPhotoFileName = () => {
   const suffix = Math.random().toString(36).slice(2, 8);
   return `achievement-${Date.now()}-${suffix}.jpg`;
+};
+
+const buildProfilePhotoFileName = () => {
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return `profile-${Date.now()}-${suffix}.jpg`;
 };
 
 const calculateResize = (
@@ -84,6 +100,47 @@ export const pickAndSavePhotoAsync = async (): Promise<string | null> => {
   await ensurePhotoDirAsync();
   const fileName = buildPhotoFileName();
   const destination = `${PHOTO_DIR}${fileName}`;
+
+  await FileSystem.moveAsync({ from: manipulated.uri, to: destination });
+  return destination;
+};
+
+/**
+ * プロフィール写真をライブラリから選択し、profile-photos/ に JPEG として保存する。
+ */
+export const pickAndSaveProfilePhotoAsync = async (): Promise<
+  string | null
+> => {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    throw new PhotoPermissionDeniedError();
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: "images",
+    allowsMultipleSelection: false,
+    quality: 1,
+  });
+
+  if (result.canceled || !result.assets?.length) {
+    return null;
+  }
+
+  const asset = result.assets[0];
+  const resizeActions = calculateResize(asset.width, asset.height);
+
+  const manipulated = await ImageManipulator.manipulateAsync(
+    asset.uri,
+    resizeActions,
+    {
+      compress: JPEG_QUALITY,
+      format: ImageManipulator.SaveFormat.JPEG,
+    }
+  );
+
+  await ensureProfilePhotoDirAsync();
+  const fileName = buildProfilePhotoFileName();
+  const destination = `${PROFILE_PHOTO_DIR}${fileName}`;
 
   await FileSystem.moveAsync({ from: manipulated.uri, to: destination });
   return destination;

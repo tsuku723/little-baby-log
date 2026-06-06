@@ -45,3 +45,6 @@ coverage/
 
 # Claude Code local settings
 .claude/
+
+# generated test fixtures
+scripts/test-backup.zip

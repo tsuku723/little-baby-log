@@ -1,12 +1,20 @@
 ﻿import React, { useLayoutEffect } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SettingsStackParamList } from "@/navigation";
 import AppText from "@/components/AppText";
-import { useAppState } from "@/state/AppStateContext";
+import { MAX_PROFILES, useAppState } from "@/state/AppStateContext";
 import { COLORS } from "@/constants/colors";
 
 type Props = NativeStackScreenProps<SettingsStackParamList, "ProfileManager">;
@@ -14,6 +22,7 @@ type Props = NativeStackScreenProps<SettingsStackParamList, "ProfileManager">;
 const ProfileManagerScreen: React.FC<Props> = ({ navigation }) => {
   const { state } = useAppState();
   const { users } = state;
+  const isAtLimit = users.length >= MAX_PROFILES;
 
   useLayoutEffect(() => {
     const parent = navigation.getParent();
@@ -49,11 +58,15 @@ const ProfileManagerScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{user.name || "名前未設定"}</Text>
                 <Text style={styles.cardMeta}>誕生日: {user.birthDate}</Text>
-                <Text style={styles.cardMeta}>予定日: {user.dueDate ?? "なし"}</Text>
+                <Text style={styles.cardMeta}>
+                  予定日: {user.dueDate ?? "なし"}
+                </Text>
               </View>
               <TouchableOpacity
                 style={styles.editButton}
-                onPress={() => navigation.navigate("ProfileEdit", { profileId: user.id })}
+                onPress={() =>
+                  navigation.navigate("ProfileEdit", { profileId: user.id })
+                }
                 accessibilityRole="button"
               >
                 <Text style={styles.editButtonText}>編集</Text>
@@ -64,11 +77,24 @@ const ProfileManagerScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => navigation.navigate("ProfileEdit")}
+            style={[styles.addButton, isAtLimit && styles.addButtonDisabled]}
+            onPress={() => {
+              if (isAtLimit) {
+                Alert.alert("", "子どもは最大5人まで登録できます");
+                return;
+              }
+              navigation.navigate("ProfileEdit");
+            }}
             accessibilityRole="button"
           >
-            <Text style={styles.addButtonText}>＋ 新しいこどもを追加</Text>
+            <Text
+              style={[
+                styles.addButtonText,
+                isAtLimit && styles.addButtonTextDisabled,
+              ]}
+            >
+              ＋ 新しいこどもを追加
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -165,6 +191,12 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontSize: 16,
     fontWeight: "700",
+  },
+  addButtonDisabled: {
+    opacity: 0.4,
+  },
+  addButtonTextDisabled: {
+    color: COLORS.textSecondary,
   },
 });
 

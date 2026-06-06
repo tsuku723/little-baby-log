@@ -35,6 +35,7 @@ import {
 } from "@/navigation";
 import AgeBadge from "@/components/AgeBadge";
 import AppText from "@/components/AppText";
+import UserAvatar from "@/components/UserAvatar";
 import { useActiveUser } from "@/state/AppStateContext";
 import { useAchievements } from "@/state/AchievementsContext";
 import { useDateViewContext } from "@/state/DateViewContext";
@@ -333,38 +334,51 @@ const TodayScreen: React.FC<Props> = ({
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <AppText style={styles.headerName} weight="medium">
-          {user.name}
-        </AppText>
-        {todayAgeInfo ? (
-          <View style={styles.headerAgeBlock}>
-            <View style={styles.headerAgeRow}>
-              <Text style={styles.headerChronological}>
-                {todayAgeInfo.chronological.formatted}
-              </Text>
-              {todayAgeInfo.flags.showMode === "gestational" &&
-              todayAgeInfo.gestational.formatted ? (
-                <View style={styles.headerCorrectedBadge}>
-                  <Text style={styles.headerCorrectedBadgeText}>
-                    在胎 {todayAgeInfo.gestational.formatted}
-                  </Text>
-                </View>
-              ) : todayAgeInfo.corrected.visible &&
-                todayAgeInfo.corrected.formatted ? (
-                <View style={styles.headerCorrectedBadge}>
-                  <Text style={styles.headerCorrectedBadgeText}>
-                    修正 {todayAgeInfo.corrected.formatted}
-                  </Text>
-                </View>
+        <UserAvatar
+          name={user.name}
+          profilePhotoPath={user.profilePhotoPath}
+          onPress={() =>
+            rootNavigation.navigate("SettingsStack", {
+              screen: "ProfileEdit",
+              params: { profileId: user.id },
+            })
+          }
+          size={64}
+        />
+        <View style={styles.headerInfo}>
+          <AppText style={styles.headerName} weight="medium">
+            {user.name}
+          </AppText>
+          {todayAgeInfo ? (
+            <View style={styles.headerAgeBlock}>
+              <View style={styles.headerAgeRow}>
+                <Text style={styles.headerChronological}>
+                  {todayAgeInfo.chronological.formatted}
+                </Text>
+                {todayAgeInfo.flags.showMode === "gestational" &&
+                todayAgeInfo.gestational.formatted ? (
+                  <View style={styles.headerCorrectedBadge}>
+                    <Text style={styles.headerCorrectedBadgeText}>
+                      在胎 {todayAgeInfo.gestational.formatted}
+                    </Text>
+                  </View>
+                ) : todayAgeInfo.corrected.visible &&
+                  todayAgeInfo.corrected.formatted ? (
+                  <View style={styles.headerCorrectedBadge}>
+                    <Text style={styles.headerCorrectedBadgeText}>
+                      修正 {todayAgeInfo.corrected.formatted}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              {user.settings.showDaysSinceBirth ? (
+                <Text style={styles.headerDays}>
+                  生まれてから{todayAgeInfo.daysSinceBirth}日目
+                </Text>
               ) : null}
             </View>
-            {user.settings.showDaysSinceBirth ? (
-              <Text style={styles.headerDays}>
-                生まれてから{todayAgeInfo.daysSinceBirth}日目
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+          ) : null}
+        </View>
         <TouchableOpacity
           style={styles.headerCalendarButton}
           onPress={handleOpenCalendar}
@@ -554,19 +568,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
+    flexDirection: "row",
     alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 16,
     backgroundColor: COLORS.headerBackground,
-    gap: 4,
+    gap: 12,
+  },
+  headerInfo: {
+    flex: 1,
+    gap: 2,
   },
   headerName: {
     fontSize: 20,
     color: COLORS.textPrimary,
-    textAlign: "center",
   },
   headerAgeBlock: {
-    alignItems: "center",
     gap: 2,
   },
   headerAgeRow: {
