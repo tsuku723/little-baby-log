@@ -17,6 +17,7 @@ import CalendarDecorations from "@/components/CalendarDecorations";
 import DatePickerModal from "@/components/DatePickerModal";
 import MonthHeader from "@/components/MonthHeader";
 import AppText from "@/components/AppText";
+import UserAvatar from "@/components/UserAvatar";
 import {
   CalendarStackParamList,
   RootStackParamList,
@@ -203,42 +204,57 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
       </View>
       <CalendarDecorations topOffset={insets.top} />
       <View style={styles.fixedHeader}>
-        <AppText style={styles.headerName} weight="medium">
-          {user?.name ?? "プロフィール未設定"}
-        </AppText>
-        {todayAgeInfo ? (
-          <View style={styles.headerAgeBlock}>
-            <View style={styles.headerAgeRow}>
-              <Text style={styles.headerChronological}>
-                {todayAgeInfo.chronological.formatted}
-              </Text>
-              {todayAgeInfo.flags.showMode === "gestational" &&
-              todayAgeInfo.gestational.formatted ? (
-                <View style={styles.headerCorrectedBadge}>
-                  <Text style={styles.headerCorrectedBadgeText}>
-                    在胎 {todayAgeInfo.gestational.formatted}
-                  </Text>
-                </View>
-              ) : todayAgeInfo.corrected.visible &&
-                todayAgeInfo.corrected.formatted ? (
-                <View style={styles.headerCorrectedBadge}>
-                  <Text style={styles.headerCorrectedBadgeText}>
-                    修正 {todayAgeInfo.corrected.formatted}
-                  </Text>
-                </View>
+        {user ? (
+          <UserAvatar
+            name={user.name}
+            profilePhotoPath={user.profilePhotoPath}
+            onPress={() =>
+              rootNavigation.navigate("SettingsStack", {
+                screen: "ProfileEdit",
+                params: { profileId: user.id },
+              })
+            }
+            size={64}
+          />
+        ) : null}
+        <View style={styles.headerInfo}>
+          <AppText style={styles.headerName} weight="medium">
+            {user?.name ?? "プロフィール未設定"}
+          </AppText>
+          {todayAgeInfo ? (
+            <View style={styles.headerAgeBlock}>
+              <View style={styles.headerAgeRow}>
+                <Text style={styles.headerChronological}>
+                  {todayAgeInfo.chronological.formatted}
+                </Text>
+                {todayAgeInfo.flags.showMode === "gestational" &&
+                todayAgeInfo.gestational.formatted ? (
+                  <View style={styles.headerCorrectedBadge}>
+                    <Text style={styles.headerCorrectedBadgeText}>
+                      在胎 {todayAgeInfo.gestational.formatted}
+                    </Text>
+                  </View>
+                ) : todayAgeInfo.corrected.visible &&
+                  todayAgeInfo.corrected.formatted ? (
+                  <View style={styles.headerCorrectedBadge}>
+                    <Text style={styles.headerCorrectedBadgeText}>
+                      修正 {todayAgeInfo.corrected.formatted}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              {showDaysSinceBirth ? (
+                <Text style={styles.headerDays}>
+                  生まれてから{todayAgeInfo.daysSinceBirth}日目
+                </Text>
               ) : null}
             </View>
-            {showDaysSinceBirth ? (
-              <Text style={styles.headerDays}>
-                生まれてから{todayAgeInfo.daysSinceBirth}日目
-              </Text>
-            ) : null}
-          </View>
-        ) : (
-          <Text style={styles.headerPlaceholder}>
-            年齢情報は設定済みのプロフィールで表示されます
-          </Text>
-        )}
+          ) : (
+            <Text style={styles.headerPlaceholder}>
+              年齢情報は設定済みのプロフィールで表示されます
+            </Text>
+          )}
+        </View>
       </View>
       <ScrollView keyboardShouldPersistTaps="handled" style={styles.scroll}>
         <View style={styles.container}>
@@ -311,11 +327,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   fixedHeader: {
+    flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: COLORS.headerBackground,
-    gap: 4,
+    gap: 12,
+  },
+  headerInfo: {
+    flex: 1,
+    gap: 2,
   },
   scroll: {
     backgroundColor: COLORS.background,
@@ -323,10 +344,8 @@ const styles = StyleSheet.create({
   headerName: {
     fontSize: 20,
     color: COLORS.textPrimary,
-    textAlign: "center",
   },
   headerAgeBlock: {
-    alignItems: "center",
     gap: 2,
   },
   headerAgeRow: {
@@ -352,12 +371,10 @@ const styles = StyleSheet.create({
   headerDays: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    textAlign: "center",
   },
   headerPlaceholder: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    textAlign: "center",
   },
   container: {
     flex: 1,
