@@ -23,6 +23,7 @@ import {
 import AgeBadge from "@/components/AgeBadge";
 import AppText from "@/components/AppText";
 import DatePickerModal from "@/components/DatePickerModal";
+import UserAvatar from "@/components/UserAvatar";
 import { useAchievements } from "@/state/AchievementsContext";
 import { useActiveUser } from "@/state/AppStateContext";
 import {
@@ -308,42 +309,57 @@ const AchievementListScreen: React.FC<Props> = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <AppText style={styles.headerName} weight="medium">
-          {user?.name ?? "プロフィール未設定"}
-        </AppText>
-        {todayAgeInfo ? (
-          <View style={styles.headerAgeBlock}>
-            <View style={styles.headerAgeRow}>
-              <Text style={styles.headerChronological}>
-                {todayAgeInfo.chronological.formatted}
-              </Text>
-              {todayAgeInfo.flags.showMode === "gestational" &&
-              todayAgeInfo.gestational.formatted ? (
-                <View style={styles.headerCorrectedBadge}>
-                  <Text style={styles.headerCorrectedBadgeText}>
-                    在胎 {todayAgeInfo.gestational.formatted}
-                  </Text>
-                </View>
-              ) : todayAgeInfo.corrected.visible &&
-                todayAgeInfo.corrected.formatted ? (
-                <View style={styles.headerCorrectedBadge}>
-                  <Text style={styles.headerCorrectedBadgeText}>
-                    修正 {todayAgeInfo.corrected.formatted}
-                  </Text>
-                </View>
+        {user ? (
+          <UserAvatar
+            name={user.name}
+            profilePhotoPath={user.profilePhotoPath}
+            onPress={() =>
+              rootNavigation.navigate("SettingsStack", {
+                screen: "ProfileEdit",
+                params: { profileId: user.id },
+              })
+            }
+            size={52}
+          />
+        ) : null}
+        <View style={styles.headerInfo}>
+          <AppText style={styles.headerName} weight="medium">
+            {user?.name ?? "プロフィール未設定"}
+          </AppText>
+          {todayAgeInfo ? (
+            <View style={styles.headerAgeBlock}>
+              <View style={styles.headerAgeRow}>
+                <Text style={styles.headerChronological}>
+                  {todayAgeInfo.chronological.formatted}
+                </Text>
+                {todayAgeInfo.flags.showMode === "gestational" &&
+                todayAgeInfo.gestational.formatted ? (
+                  <View style={styles.headerCorrectedBadge}>
+                    <Text style={styles.headerCorrectedBadgeText}>
+                      在胎 {todayAgeInfo.gestational.formatted}
+                    </Text>
+                  </View>
+                ) : todayAgeInfo.corrected.visible &&
+                  todayAgeInfo.corrected.formatted ? (
+                  <View style={styles.headerCorrectedBadge}>
+                    <Text style={styles.headerCorrectedBadgeText}>
+                      修正 {todayAgeInfo.corrected.formatted}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              {user?.settings.showDaysSinceBirth ? (
+                <Text style={styles.headerDays}>
+                  生まれてから{todayAgeInfo.daysSinceBirth}日目
+                </Text>
               ) : null}
             </View>
-            {user?.settings.showDaysSinceBirth ? (
-              <Text style={styles.headerDays}>
-                生まれてから{todayAgeInfo.daysSinceBirth}日目
-              </Text>
-            ) : null}
-          </View>
-        ) : (
-          <Text style={styles.headerPlaceholder}>
-            年齢情報は設定済みのプロフィールで表示されます
-          </Text>
-        )}
+          ) : (
+            <Text style={styles.headerPlaceholder}>
+              年齢情報は設定済みのプロフィールで表示されます
+            </Text>
+          )}
+        </View>
       </View>
       <View style={styles.content}>
         <View style={styles.filterBar}>
@@ -459,19 +475,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
+    flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: COLORS.headerBackground,
-    gap: 4,
+    gap: 12,
+  },
+  headerInfo: {
+    flex: 1,
+    gap: 2,
   },
   headerName: {
     fontSize: 20,
     color: COLORS.textPrimary,
-    textAlign: "center",
   },
   headerAgeBlock: {
-    alignItems: "center",
     gap: 2,
   },
   headerAgeRow: {
@@ -501,7 +520,6 @@ const styles = StyleSheet.create({
   headerPlaceholder: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    textAlign: "center",
   },
   content: {
     flex: 1,
