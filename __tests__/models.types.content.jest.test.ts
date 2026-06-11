@@ -1,6 +1,6 @@
 import { DEFAULT_SETTINGS } from "../src/types/models";
 import {
-  ABOUT_TEXT_JA,
+  getAboutTextJa,
   LEGAL_META,
   PRIVACY_POLICY_TEXT_JA,
   TERMS_TEXT_JA,
@@ -26,13 +26,14 @@ describe("content/legal/ja exports", () => {
   it("LEGAL_METAに公開情報を含む", () => {
     expect(LEGAL_META.appName).toBe("リトルベビーログ");
     expect(LEGAL_META.contactEmail).toContain("@");
-    expect(LEGAL_META.initialVersionLabel).toMatch(/^Version\s\d+\.\d+\.\d+$/);
   });
 
   it("ABOUT文面に主要セクションを含む", () => {
-    expect(ABOUT_TEXT_JA).toContain("# このアプリについて");
-    expect(ABOUT_TEXT_JA).toContain("## 修正月齢・在胎週数の計算方法について");
-    expect(ABOUT_TEXT_JA).toContain(LEGAL_META.contactEmail);
+    const aboutText = getAboutTextJa("1.0.0");
+    expect(aboutText).toContain("# このアプリについて");
+    expect(aboutText).toContain("## 修正月齢・在胎週数の計算方法について");
+    expect(aboutText).toContain(LEGAL_META.contactEmail);
+    expect(aboutText).toContain("Version 1.0.0");
   });
 
   it("利用規約文面に施行日が含まれる", () => {
