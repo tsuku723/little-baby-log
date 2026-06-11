@@ -74,6 +74,10 @@ const AchievementListScreen: React.FC<Props> = () => {
   const [toDate, setToDate] = useState<string | null>(null);
   const [isFilterExpanded, setFilterExpanded] = useState(false);
   const today = useMemo(() => startOfLocalDay(new Date()), []);
+  const todayIso = useMemo(
+    () => toIsoDateString(toUtcDateOnly(new Date())),
+    []
+  );
   const MIN_DATE = useMemo(() => new Date(1900, 0, 1), []);
   const MAX_DATE = useMemo(() => new Date(2100, 11, 31), []);
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
@@ -440,7 +444,9 @@ const AchievementListScreen: React.FC<Props> = () => {
       <TouchableOpacity
         style={styles.fab}
         accessibilityRole="button"
-        onPress={() => rootNavigation.navigate("RecordInput")}
+        onPress={() =>
+          rootNavigation.navigate("RecordInput", { isoDate: todayIso })
+        }
       >
         <Text style={styles.fabText}>＋記録</Text>
       </TouchableOpacity>
