@@ -12,8 +12,7 @@
       "distribution": "store"
     },
     "production": {
-      "autoIncrement": true,
-      "prebuildCommand": "cp $GOOGLE_SERVICES_IOS ./GoogleService-Info.plist"
+      "autoIncrement": true
     }
   },
   "submit": {
