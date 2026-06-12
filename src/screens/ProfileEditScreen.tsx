@@ -31,6 +31,7 @@ import {
   deleteIfExistsAsync,
   pickAndSaveProfilePhotoAsync,
 } from "@/utils/photo";
+import { logProfileCreated } from "@/services/analytics";
 
 type Props = NativeStackScreenProps<SettingsStackParamList, "ProfileEdit">;
 
@@ -207,6 +208,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         profilePhotoPath: profilePhotoPath ?? undefined,
         settings: draftSettings,
       });
+      void logProfileCreated();
     }
 
     navigation.popToTop();

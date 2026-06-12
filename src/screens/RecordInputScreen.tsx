@@ -43,6 +43,7 @@ import {
 } from "@/utils/photo";
 import { RECORD_TITLE_CANDIDATE_SECTIONS } from "./recordTitleCandidates";
 import { COLORS } from "@/constants/colors";
+import { logRecordCreated } from "@/services/analytics";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RecordInput">;
 
@@ -233,6 +234,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
 
     try {
       await upsert(payload);
+      if (!editingRecord) void logRecordCreated();
       navigation.goBack();
     } catch (error) {
       console.error("Failed to save record", error);

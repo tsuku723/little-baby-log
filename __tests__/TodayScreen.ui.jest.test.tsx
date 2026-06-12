@@ -21,6 +21,7 @@ jest.mock("react-native-view-shot", () => {
 
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({ navigate: jest.fn() }),
+  useFocusEffect: jest.fn(),
 }));
 
 jest.mock("@expo/vector-icons", () => ({

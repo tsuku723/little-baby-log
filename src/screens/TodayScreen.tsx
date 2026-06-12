@@ -47,6 +47,9 @@ import {
 } from "@/utils/dateUtils";
 import { ensureFileExistsAsync } from "@/utils/photo";
 import { COLORS } from "@/constants/colors";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+import { logTodayOpened } from "@/services/analytics";
 
 type RecordCardProps = {
   item: Achievement;
@@ -111,6 +114,11 @@ const TodayScreen: React.FC<Props> = ({
   navigation: stackNavigation,
   route,
 }) => {
+  useFocusEffect(
+    useCallback(() => {
+      void logTodayOpened();
+    }, [])
+  );
   const rootNavigation = useNavigation<RootNavigation>();
   // Hooks should remain at top level (no conditional hooks)
   const user = useActiveUser();
