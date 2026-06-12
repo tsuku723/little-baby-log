@@ -13,6 +13,7 @@
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
+      "googleServicesFile": "./GoogleService-Info.plist",
       "bundleIdentifier": "studio.teeda.littlebabylog",
       "buildNumber": "14",
       "supportsTablet": false,
