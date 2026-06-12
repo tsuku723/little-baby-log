@@ -10,5 +10,7 @@ module.exports = {
   ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^@react-native-firebase/(.*)$":
+      "<rootDir>/__mocks__/@react-native-firebase/$1.js",
   },
 };

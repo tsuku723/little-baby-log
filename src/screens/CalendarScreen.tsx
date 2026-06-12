@@ -35,6 +35,9 @@ import {
   toUtcDateOnly,
 } from "@/utils/dateUtils";
 import { COLORS } from "@/constants/colors";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+import { logCalendarOpened } from "@/services/analytics";
 
 type Props = NativeStackScreenProps<CalendarStackParamList, "Calendar">;
 type RootNavigation = NavigationProp<RootStackParamList & TabParamList>;
@@ -42,6 +45,11 @@ type RootNavigation = NavigationProp<RootStackParamList & TabParamList>;
 const WEEK_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
 const CalendarScreen: React.FC<Props> = ({ navigation }) => {
+  useFocusEffect(
+    useCallback(() => {
+      void logCalendarOpened();
+    }, [])
+  );
   const rootNavigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
   const user = useActiveUser();
