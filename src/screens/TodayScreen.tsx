@@ -552,8 +552,9 @@ const TodayScreen: React.FC<Props> = ({
       <TouchableOpacity
         style={styles.fab}
         accessibilityRole="button"
-        // Phase 1: FAB は記録入力画面への入口だけを保持
-        onPress={() => rootNavigation.navigate("RecordInput")}
+        onPress={() =>
+          rootNavigation.navigate("RecordInput", { isoDate: selectedDateIso })
+        }
       >
         <Text style={styles.fabText}>＋記録</Text>
       </TouchableOpacity>
