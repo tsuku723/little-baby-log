@@ -18,14 +18,14 @@
 
 ## 技術スタック
 
-| カテゴリ | 内容 |
-|---|---|
-| フレームワーク | React Native / Expo SDK 54 |
-| 言語 | TypeScript |
-| ナビゲーション | React Navigation（スタック + ボトムタブ） |
-| データ永続化 | AsyncStorage |
-| テスト | Jest / jest-expo |
-| CI | GitHub Actions（型チェック + ユニットテスト） |
+| カテゴリ       | 内容                                          |
+| -------------- | --------------------------------------------- |
+| フレームワーク | React Native / Expo SDK 54                    |
+| 言語           | TypeScript                                    |
+| ナビゲーション | React Navigation（スタック + ボトムタブ）     |
+| データ永続化   | AsyncStorage                                  |
+| テスト         | Jest / jest-expo                              |
+| CI             | GitHub Actions（型チェック + ユニットテスト） |
 
 ---
 
@@ -90,5 +90,5 @@ docs/           # GitHub Pages（リーガルページ）
 
 ## ライセンス
 
-本リポジトリのソースコードは非公開です。
+本リポジトリのソースコードは公開されていますが、ライセンスは設定されていません（All Rights Reserved）。コードの複製・再利用・配布はご遠慮ください。
 利用ライブラリのライセンスについては [オープンソースライセンス](https://tsuku723.github.io/little-baby-log/oss-licenses) をご確認ください。
