@@ -43,7 +43,12 @@
         "expo-build-properties",
         {
           "ios": {
-            "extraPodfileContent": "pod 'GoogleUtilities', :modular_headers => true"
+            "extraPods": [
+              {
+                "name": "GoogleUtilities",
+                "modular_headers": true
+              }
+            ]
           }
         }
       ],
