@@ -43,12 +43,8 @@
         "expo-build-properties",
         {
           "ios": {
-            "extraPods": [
-              {
-                "name": "GoogleUtilities",
-                "modular_headers": true
-              }
-            ]
+            "useFrameworks": "static",
+            "forceStaticLinking": ["RNFBAnalytics", "RNFBApp"]
           }
         }
       ],
