@@ -39,6 +39,14 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       "@react-native-firebase/app",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPodfileContent": "pod 'GoogleUtilities', :modular_headers => true"
+          }
+        }
+      ],
       "expo-font",
       "expo-image-picker",
       "expo-tracking-transparency",
