@@ -22,10 +22,7 @@ const isSafePhotoPath = (path: string): boolean =>
  * 相対パスでない場合（レガシーの絶対パス等）はそのまま返す。
  */
 export const resolvePhotoPath = (relativePath: string): string => {
-  if (
-    relativePath.startsWith("achievement-photos/") ||
-    relativePath.startsWith("profile-photos/")
-  ) {
+  if (isSafePhotoPath(relativePath)) {
     return `${FileSystem.documentDirectory}${relativePath}`;
   }
   return relativePath;
@@ -178,21 +175,28 @@ export const pickAndSaveProfilePhotoAsync = async (): Promise<
   return `profile-photos/${fileName}`;
 };
 
+const toSafeRelativePath = (path: string): string | null => {
+  if (isSafePhotoPath(path)) return path;
+  const relative = toRelativePhotoPath(path);
+  return relative && isSafePhotoPath(relative) ? relative : null;
+};
+
 /**
  * FileSystem 上にファイルが存在するかを確認し、存在すれば相対パスを返す。
- * 入力は相対パス（achievement-photos/xxx.jpg 形式）を期待する。
+ * 入力は相対パスを期待するが、レガシー絶対パスも正規化して処理する。
  */
 export const ensureFileExistsAsync = async (
   path?: string | null
 ): Promise<string | null> => {
   if (!path) return null;
-  if (!isSafePhotoPath(path)) {
+  const safePath = toSafeRelativePath(path);
+  if (!safePath) {
     console.warn("Unsafe photoPath rejected:", path);
     return null;
   }
   try {
-    const info = await FileSystem.getInfoAsync(resolvePhotoPath(path));
-    return info.exists ? path : null;
+    const info = await FileSystem.getInfoAsync(resolvePhotoPath(safePath));
+    return info.exists ? safePath : null;
   } catch (error) {
     console.warn("Failed to check file existence", error);
     return null;
@@ -201,16 +205,17 @@ export const ensureFileExistsAsync = async (
 
 /**
  * ファイルが存在すれば削除する（エラーは呼び出し元に伝搬させない）。
- * 入力は相対パス（achievement-photos/xxx.jpg 形式）を期待する。
+ * 入力は相対パスを期待するが、レガシー絶対パスも正規化して処理する。
  */
 export const deleteIfExistsAsync = async (path?: string | null) => {
   if (!path) return;
-  if (!isSafePhotoPath(path)) {
+  const safePath = toSafeRelativePath(path);
+  if (!safePath) {
     console.warn("Unsafe photoPath rejected:", path);
     return;
   }
   try {
-    const absolutePath = resolvePhotoPath(path);
+    const absolutePath = resolvePhotoPath(safePath);
     const info = await FileSystem.getInfoAsync(absolutePath);
     if (info.exists) {
       await FileSystem.deleteAsync(absolutePath, { idempotent: true });

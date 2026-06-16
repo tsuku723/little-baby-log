@@ -209,16 +209,16 @@ const migrateLegacyState = async (): Promise<AppState | null> => {
   return migratedState;
 };
 
-const migratePhotoPaths = (state: AppState): AppState => {
+const migratePhotoPaths = (
+  state: AppState
+): { state: AppState; changed: boolean } => {
+  let changed = false;
+
   const migratePath = (path?: string): string | undefined => {
     if (!path) return path;
-    if (
-      path.startsWith("achievement-photos/") ||
-      path.startsWith("profile-photos/")
-    ) {
-      return path;
-    }
-    return toRelativePhotoPath(path) ?? path;
+    const relative = toRelativePhotoPath(path) ?? path;
+    if (relative !== path) changed = true;
+    return relative;
   };
 
   const users = state.users.map((user) => ({
@@ -234,7 +234,7 @@ const migratePhotoPaths = (state: AppState): AppState => {
     }));
   }
 
-  return { ...state, users, achievements };
+  return { state: { ...state, users, achievements }, changed };
 };
 
 const loadAppState = async (): Promise<AppState> => {
@@ -242,14 +242,22 @@ const loadAppState = async (): Promise<AppState> => {
   if (raw) {
     try {
       const parsed = JSON.parse(raw) as AppState;
-      return ensureStateIntegrity(migratePhotoPaths(parsed));
+      const { state: migrated, changed } = migratePhotoPaths(parsed);
+      const integrity = ensureStateIntegrity(migrated);
+      if (changed) await persistState(integrity);
+      return integrity;
     } catch (error) {
       console.warn("Failed to parse AppState; resetting", error);
     }
   }
 
-  const migrated = await migrateLegacyState();
-  if (migrated) return ensureStateIntegrity(migratePhotoPaths(migrated));
+  const legacyMigrated = await migrateLegacyState();
+  if (legacyMigrated) {
+    const { state: migrated, changed } = migratePhotoPaths(legacyMigrated);
+    const integrity = ensureStateIntegrity(migrated);
+    if (changed) await persistState(integrity);
+    return integrity;
+  }
 
   return { ...EMPTY_STATE };
 };
