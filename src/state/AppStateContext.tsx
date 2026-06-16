@@ -15,6 +15,7 @@ import {
   loadAchievements,
   loadUserSettings,
 } from "@/storage/storage";
+import { toRelativePhotoPath } from "@/utils/photo";
 
 export type UserSettings = {
   showCorrectedUntilMonths: number | null;
@@ -208,19 +209,47 @@ const migrateLegacyState = async (): Promise<AppState | null> => {
   return migratedState;
 };
 
+const migratePhotoPaths = (state: AppState): AppState => {
+  const migratePath = (path?: string): string | undefined => {
+    if (!path) return path;
+    if (
+      path.startsWith("achievement-photos/") ||
+      path.startsWith("profile-photos/")
+    ) {
+      return path;
+    }
+    return toRelativePhotoPath(path) ?? path;
+  };
+
+  const users = state.users.map((user) => ({
+    ...user,
+    profilePhotoPath: migratePath(user.profilePhotoPath),
+  }));
+
+  const achievements: Record<string, Achievement[]> = {};
+  for (const [userId, records] of Object.entries(state.achievements)) {
+    achievements[userId] = records.map((a) => ({
+      ...a,
+      photoPath: migratePath(a.photoPath),
+    }));
+  }
+
+  return { ...state, users, achievements };
+};
+
 const loadAppState = async (): Promise<AppState> => {
   const raw = await AsyncStorage.getItem(APP_STATE_KEY);
   if (raw) {
     try {
       const parsed = JSON.parse(raw) as AppState;
-      return ensureStateIntegrity(parsed);
+      return ensureStateIntegrity(migratePhotoPaths(parsed));
     } catch (error) {
       console.warn("Failed to parse AppState; resetting", error);
     }
   }
 
   const migrated = await migrateLegacyState();
-  if (migrated) return ensureStateIntegrity(migrated);
+  if (migrated) return ensureStateIntegrity(migratePhotoPaths(migrated));
 
   return { ...EMPTY_STATE };
 };

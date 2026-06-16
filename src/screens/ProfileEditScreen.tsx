@@ -30,6 +30,7 @@ import {
   PhotoPermissionDeniedError,
   deleteIfExistsAsync,
   pickAndSaveProfilePhotoAsync,
+  resolvePhotoPath,
 } from "@/utils/photo";
 import { logProfileCreated } from "@/services/analytics";
 
@@ -306,7 +307,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             {formState.profilePhotoPath ? (
               <Image
-                source={{ uri: formState.profilePhotoPath }}
+                source={{ uri: resolvePhotoPath(formState.profilePhotoPath) }}
                 style={styles.avatar}
               />
             ) : (
