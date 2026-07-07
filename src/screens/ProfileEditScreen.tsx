@@ -13,13 +13,14 @@ import {
   View,
 } from "react-native";
 
+import { NavigationProp } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import AppText from "@/components/AppText";
 import DatePickerModal from "@/components/DatePickerModal";
 import { COLORS } from "@/constants/colors";
 import { UserSettings } from "@/models/dataModels";
-import { SettingsStackParamList } from "@/navigation";
+import { SettingsStackParamList, TabParamList } from "@/navigation";
 import { useAppState } from "@/state/AppStateContext";
 import {
   isIsoDateString,
@@ -53,6 +54,17 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const { state, addUser, updateUser, deleteUser } = useAppState();
   const { users } = state;
   const profileId = route.params?.profileId;
+  const returnTo = route.params?.returnTo;
+
+  const returnToOriginTab = () => {
+    navigation.popToTop();
+    const parent = navigation.getParent<NavigationProp<TabParamList>>();
+    if (returnTo === "CalendarStack") {
+      parent?.navigate("CalendarStack", { screen: "Calendar" });
+    } else if (returnTo === "RecordListStack") {
+      parent?.navigate("RecordListStack", { screen: "AchievementList" });
+    }
+  };
 
   const existing = useMemo(
     () => users.find((u) => u.id === profileId),
@@ -172,7 +184,11 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     if (current && current !== existing?.profilePhotoPath) {
       await deleteIfExistsAsync(current);
     }
-    navigation.goBack();
+    if (returnTo) {
+      returnToOriginTab();
+    } else {
+      navigation.goBack();
+    }
   };
 
   const handleSave = async () => {
@@ -211,7 +227,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
       void logProfileCreated();
     }
 
-    navigation.popToTop();
+    returnToOriginTab();
   };
 
   const openDatePicker = (field: "birth" | "due") => {
@@ -270,7 +286,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
           await Promise.all(achievementPhotos.map(deleteIfExistsAsync));
           await deleteIfExistsAsync(existing.profilePhotoPath);
           await deleteUser(existing.id);
-          navigation.popToTop();
+          returnToOriginTab();
         },
       },
     ]);
