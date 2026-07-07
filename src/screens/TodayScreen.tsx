@@ -348,7 +348,7 @@ const TodayScreen: React.FC<Props> = ({
           onPress={() =>
             rootNavigation.navigate("SettingsStack", {
               screen: "ProfileEdit",
-              params: { profileId: user.id },
+              params: { profileId: user.id, returnTo: "CalendarStack" },
             })
           }
           size={64}
