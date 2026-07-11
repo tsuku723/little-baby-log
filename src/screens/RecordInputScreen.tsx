@@ -39,6 +39,7 @@ import {
   deleteIfExistsAsync,
   ensureFileExistsAsync,
   pickAndSavePhotoAsync,
+  resolvePhotoPath,
   PhotoPermissionDeniedError,
 } from "@/utils/photo";
 import { RECORD_TITLE_CANDIDATE_SECTIONS } from "./recordTitleCandidates";
@@ -405,7 +406,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
           {photoPath ? (
             <View style={styles.photoPreviewWrapper}>
               <Image
-                source={{ uri: photoPath }}
+                source={{ uri: resolvePhotoPath(photoPath) }}
                 style={styles.photoPreview}
                 resizeMode="cover"
               />

@@ -80,7 +80,7 @@ describe("restoreBackup（実ZIPフィクスチャ）", () => {
         { encoding: "base64" }
       );
       expect(result.achievements.u1[0].photoPath).toBe(
-        "file:///documents/achievement-photos/photo_a1.jpg"
+        "achievement-photos/photo_a1.jpg"
       );
     });
 
@@ -141,10 +141,10 @@ describe("restoreBackup（実ZIPフィクスチャ）", () => {
       const result = await restoreBackup("file:///any.zip");
 
       expect(result.achievements.u1[0].photoPath).toBe(
-        "file:///documents/achievement-photos/shared.jpg"
+        "achievement-photos/shared.jpg"
       );
       expect(result.achievements.u1[1].photoPath).toBe(
-        "file:///documents/achievement-photos/shared.jpg"
+        "achievement-photos/shared.jpg"
       );
     });
 

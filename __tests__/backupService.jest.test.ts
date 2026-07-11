@@ -93,7 +93,7 @@ describe("BackupService", () => {
 
     const achievementWithPhoto = {
       ...baseAchievement,
-      photoPath: "file:///documents/photo_a1.jpg",
+      photoPath: "achievement-photos/photo_a1.jpg",
     };
 
     await createBackup([baseProfile], { u1: [achievementWithPhoto] });
@@ -117,7 +117,7 @@ describe("BackupService", () => {
 
     const achievementWithPhoto = {
       ...baseAchievement,
-      photoPath: "file:///documents/missing.jpg",
+      photoPath: "achievement-photos/missing.jpg",
     };
 
     await createBackup([baseProfile], { u1: [achievementWithPhoto] });
@@ -153,7 +153,7 @@ describe("BackupService", () => {
 
     const profileWithPhoto = {
       ...baseProfile,
-      profilePhotoPath: "file:///documents/profile_u1.jpg",
+      profilePhotoPath: "profile-photos/profile_u1.jpg",
     };
 
     await createBackup([profileWithPhoto], { u1: [baseAchievement] });
@@ -176,7 +176,7 @@ describe("BackupService", () => {
     mockGetInfoAsync.mockResolvedValue({ exists: true });
     mockReadAsStringAsync.mockResolvedValue("base64photo");
 
-    const sharedPhotoPath = "file:///documents/shared.jpg";
+    const sharedPhotoPath = "achievement-photos/shared.jpg";
     const achievements = {
       u1: [
         { ...baseAchievement, id: "a1", photoPath: sharedPhotoPath },
@@ -258,7 +258,7 @@ describe("BackupService", () => {
         { encoding: "base64" }
       );
       expect(result.achievements.u1[0].photoPath).toBe(
-        "file:///documents/achievement-photos/photo_a1.jpg"
+        "achievement-photos/photo_a1.jpg"
       );
     });
 

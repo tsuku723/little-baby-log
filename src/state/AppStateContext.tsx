@@ -15,6 +15,7 @@ import {
   loadAchievements,
   loadUserSettings,
 } from "@/storage/storage";
+import { toRelativePhotoPath } from "@/utils/photo";
 
 export type UserSettings = {
   showCorrectedUntilMonths: number | null;
@@ -208,19 +209,55 @@ const migrateLegacyState = async (): Promise<AppState | null> => {
   return migratedState;
 };
 
+const migratePhotoPaths = (
+  state: AppState
+): { state: AppState; changed: boolean } => {
+  let changed = false;
+
+  const migratePath = (path?: string): string | undefined => {
+    if (!path) return path;
+    const relative = toRelativePhotoPath(path) ?? path;
+    if (relative !== path) changed = true;
+    return relative;
+  };
+
+  const users = state.users.map((user) => ({
+    ...user,
+    profilePhotoPath: migratePath(user.profilePhotoPath),
+  }));
+
+  const achievements: Record<string, Achievement[]> = {};
+  for (const [userId, records] of Object.entries(state.achievements)) {
+    achievements[userId] = records.map((a) => ({
+      ...a,
+      photoPath: migratePath(a.photoPath),
+    }));
+  }
+
+  return { state: { ...state, users, achievements }, changed };
+};
+
 const loadAppState = async (): Promise<AppState> => {
   const raw = await AsyncStorage.getItem(APP_STATE_KEY);
   if (raw) {
     try {
       const parsed = JSON.parse(raw) as AppState;
-      return ensureStateIntegrity(parsed);
+      const { state: migrated, changed } = migratePhotoPaths(parsed);
+      const integrity = ensureStateIntegrity(migrated);
+      if (changed) await persistState(integrity);
+      return integrity;
     } catch (error) {
       console.warn("Failed to parse AppState; resetting", error);
     }
   }
 
-  const migrated = await migrateLegacyState();
-  if (migrated) return ensureStateIntegrity(migrated);
+  const legacyMigrated = await migrateLegacyState();
+  if (legacyMigrated) {
+    const { state: migrated, changed } = migratePhotoPaths(legacyMigrated);
+    const integrity = ensureStateIntegrity(migrated);
+    if (changed) await persistState(integrity);
+    return integrity;
+  }
 
   return { ...EMPTY_STATE };
 };
