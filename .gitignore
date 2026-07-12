@@ -53,3 +53,6 @@ coverage/
 
 # generated test fixtures
 scripts/test-backup.zip
+
+# local dev launcher
+start-expo.bat

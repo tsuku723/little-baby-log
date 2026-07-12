@@ -2,10 +2,18 @@ name: EAS Build (iOS)
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: "Build profile"
+        type: choice
+        default: production
+        options:
+          - production
+          - development
 
 jobs:
   build:
-    name: EAS Build iOS Production
+    name: EAS Build iOS ${{ inputs.profile }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,13 +28,14 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      - name: Build iOS (production)
-        run: eas build --platform ios --profile production --non-interactive
+      - name: Build iOS (${{ inputs.profile }})
+        run: eas build --platform ios --profile ${{ inputs.profile }} --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           GOOGLE_SERVICES_IOS_BASE64: ${{ secrets.GOOGLE_SERVICES_IOS_BASE64 }}
 
       - name: Submit to TestFlight
+        if: inputs.profile == 'production'
         run: eas submit --platform ios --profile production --latest --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
