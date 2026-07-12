@@ -19,7 +19,7 @@ import AppText from "@/components/AppText";
 import { useActiveUser } from "@/state/AppStateContext";
 import { useAchievements } from "@/state/AchievementsContext";
 import { calculateAgeInfo } from "@/utils/dateUtils";
-import { ensureFileExistsAsync } from "@/utils/photo";
+import { ensureFileExistsAsync, resolvePhotoPath } from "@/utils/photo";
 import { COLORS } from "@/constants/colors";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RecordDetail">;
@@ -117,7 +117,7 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.photoWrapper}>
           {photoPath ? (
             <Image
-              source={{ uri: photoPath }}
+              source={{ uri: resolvePhotoPath(photoPath) }}
               style={styles.photo}
               resizeMode="cover"
             />

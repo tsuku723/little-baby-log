@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { COLORS } from "@/constants/colors";
+import { resolvePhotoPath } from "@/utils/photo";
 
 type Props = {
   name: string;
@@ -36,7 +37,7 @@ const UserAvatar: React.FC<Props> = ({
     >
       {showImage ? (
         <Image
-          source={{ uri: profilePhotoPath }}
+          source={{ uri: resolvePhotoPath(profilePhotoPath!) }}
           style={{ width: size, height: size, borderRadius }}
           onError={() => setImageError(true)}
         />

@@ -34,6 +34,7 @@ import {
   toUtcDateOnly,
 } from "@/utils/dateUtils";
 import { groupRecordsByMonth } from "@/utils/groupRecordsByMonth";
+import { resolvePhotoPath } from "@/utils/photo";
 import { normalizeSearchText } from "@/utils/text";
 import { COLORS } from "@/constants/colors";
 
@@ -225,7 +226,7 @@ const AchievementListScreen: React.FC<Props> = () => {
       >
         {record.photoPath ? (
           <Image
-            source={{ uri: record.photoPath }}
+            source={{ uri: resolvePhotoPath(record.photoPath) }}
             style={styles.featuredPhoto}
             resizeMode="cover"
           />
@@ -282,7 +283,7 @@ const AchievementListScreen: React.FC<Props> = () => {
         <View style={styles.thumbnailArea}>
           {record.photoPath ? (
             <Image
-              source={{ uri: record.photoPath }}
+              source={{ uri: resolvePhotoPath(record.photoPath) }}
               style={styles.thumbnail}
               resizeMode="cover"
             />

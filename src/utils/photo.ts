@@ -15,7 +15,34 @@ const MAX_LONG_EDGE = 1600;
 const JPEG_QUALITY = 0.75;
 
 const isSafePhotoPath = (path: string): boolean =>
-  path.startsWith(PHOTO_DIR) || path.startsWith(PROFILE_PHOTO_DIR);
+  path.startsWith("achievement-photos/") || path.startsWith("profile-photos/");
+
+/**
+ * 相対パスを絶対URIに変換する。表示・FS操作の直前にのみ使用する。
+ * 相対パスでない場合（レガシーの絶対パス等）はそのまま返す。
+ */
+export const resolvePhotoPath = (relativePath: string): string => {
+  if (isSafePhotoPath(relativePath)) {
+    return `${FileSystem.documentDirectory}${relativePath}`;
+  }
+  return relativePath;
+};
+
+/**
+ * 絶対パスから相対パスを抽出する（マイグレーション用）。
+ * achievement-photos/ または profile-photos/ を含むパスに対して動作する。
+ */
+export const toRelativePhotoPath = (absolutePath: string): string | null => {
+  const achievementIdx = absolutePath.indexOf("/achievement-photos/");
+  if (achievementIdx !== -1) {
+    return absolutePath.slice(achievementIdx + 1);
+  }
+  const profileIdx = absolutePath.indexOf("/profile-photos/");
+  if (profileIdx !== -1) {
+    return absolutePath.slice(profileIdx + 1);
+  }
+  return null;
+};
 
 const ensurePhotoDirAsync = async () => {
   const dirInfo = await FileSystem.getInfoAsync(PHOTO_DIR);
@@ -68,6 +95,7 @@ const calculateResize = (
  * - 長辺 1600px 以内にリサイズ
  * - JPEG 圧縮 0.75（0.7〜0.8 の中間）
  * - HEIC/PNG なども JPEG に変換
+ * - 戻り値は相対パス（例: achievement-photos/xxx.jpg）
  */
 export const pickAndSavePhotoAsync = async (): Promise<string | null> => {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -102,11 +130,12 @@ export const pickAndSavePhotoAsync = async (): Promise<string | null> => {
   const destination = `${PHOTO_DIR}${fileName}`;
 
   await FileSystem.moveAsync({ from: manipulated.uri, to: destination });
-  return destination;
+  return `achievement-photos/${fileName}`;
 };
 
 /**
  * プロフィール写真をライブラリから選択し、profile-photos/ に JPEG として保存する。
+ * - 戻り値は相対パス（例: profile-photos/xxx.jpg）
  */
 export const pickAndSaveProfilePhotoAsync = async (): Promise<
   string | null
@@ -143,23 +172,31 @@ export const pickAndSaveProfilePhotoAsync = async (): Promise<
   const destination = `${PROFILE_PHOTO_DIR}${fileName}`;
 
   await FileSystem.moveAsync({ from: manipulated.uri, to: destination });
-  return destination;
+  return `profile-photos/${fileName}`;
+};
+
+const toSafeRelativePath = (path: string): string | null => {
+  if (isSafePhotoPath(path)) return path;
+  const relative = toRelativePhotoPath(path);
+  return relative && isSafePhotoPath(relative) ? relative : null;
 };
 
 /**
- * FileSystem 上にファイルが存在するかを確認し、存在すればパスを返す。
+ * FileSystem 上にファイルが存在するかを確認し、存在すれば相対パスを返す。
+ * 入力は相対パスを期待するが、レガシー絶対パスも正規化して処理する。
  */
 export const ensureFileExistsAsync = async (
   path?: string | null
 ): Promise<string | null> => {
   if (!path) return null;
-  if (!isSafePhotoPath(path)) {
+  const safePath = toSafeRelativePath(path);
+  if (!safePath) {
     console.warn("Unsafe photoPath rejected:", path);
     return null;
   }
   try {
-    const info = await FileSystem.getInfoAsync(path);
-    return info.exists ? path : null;
+    const info = await FileSystem.getInfoAsync(resolvePhotoPath(safePath));
+    return info.exists ? safePath : null;
   } catch (error) {
     console.warn("Failed to check file existence", error);
     return null;
@@ -168,17 +205,20 @@ export const ensureFileExistsAsync = async (
 
 /**
  * ファイルが存在すれば削除する（エラーは呼び出し元に伝搬させない）。
+ * 入力は相対パスを期待するが、レガシー絶対パスも正規化して処理する。
  */
 export const deleteIfExistsAsync = async (path?: string | null) => {
   if (!path) return;
-  if (!isSafePhotoPath(path)) {
+  const safePath = toSafeRelativePath(path);
+  if (!safePath) {
     console.warn("Unsafe photoPath rejected:", path);
     return;
   }
   try {
-    const info = await FileSystem.getInfoAsync(path);
+    const absolutePath = resolvePhotoPath(safePath);
+    const info = await FileSystem.getInfoAsync(absolutePath);
     if (info.exists) {
-      await FileSystem.deleteAsync(path, { idempotent: true });
+      await FileSystem.deleteAsync(absolutePath, { idempotent: true });
     }
   } catch (error) {
     console.warn("Failed to delete file", error);

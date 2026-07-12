@@ -45,7 +45,7 @@ import {
   toIsoDateString,
   toUtcDateOnly,
 } from "@/utils/dateUtils";
-import { ensureFileExistsAsync } from "@/utils/photo";
+import { ensureFileExistsAsync, resolvePhotoPath } from "@/utils/photo";
 import { COLORS } from "@/constants/colors";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
@@ -84,7 +84,7 @@ const RecordCard: React.FC<RecordCardProps> = ({ item, onPress }) => {
       <View style={styles.cardThumb}>
         {resolvedPhoto ? (
           <Image
-            source={{ uri: resolvedPhoto }}
+            source={{ uri: resolvePhotoPath(resolvedPhoto) }}
             style={styles.cardThumbImage}
             resizeMode="cover"
           />
@@ -488,7 +488,7 @@ const TodayScreen: React.FC<Props> = ({
               <View style={styles.exportPhotoFrame}>
                 {latestPhotoPath ? (
                   <Image
-                    source={{ uri: latestPhotoPath }}
+                    source={{ uri: resolvePhotoPath(latestPhotoPath) }}
                     style={styles.exportPhoto}
                     resizeMode="cover"
                   />

@@ -2,6 +2,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import JSZip from "jszip";
 
 import { Achievement, UserProfile } from "@/state/AppStateContext";
+import { resolvePhotoPath } from "@/utils/photo";
 
 const APP_VERSION = "1.0.0";
 const BACKUP_FORMAT_VERSION = 1;
@@ -26,14 +27,15 @@ export const createBackup = async (
 
   const photoMap: Record<string, string> = {};
 
-  const addPhotoToZip = async (originalPath: string, fallbackName: string) => {
-    if (photoMap[originalPath]) return;
-    const filename = originalPath.split("/").pop() ?? fallbackName;
+  const addPhotoToZip = async (relativePath: string, fallbackName: string) => {
+    if (photoMap[relativePath]) return;
+    const filename = relativePath.split("/").pop() ?? fallbackName;
     const zipPath = `photos/${filename}`;
-    photoMap[originalPath] = zipPath;
-    const fileInfo = await FileSystem.getInfoAsync(originalPath);
+    photoMap[relativePath] = zipPath;
+    const absolutePath = resolvePhotoPath(relativePath);
+    const fileInfo = await FileSystem.getInfoAsync(absolutePath);
     if (fileInfo.exists) {
-      const base64 = await FileSystem.readAsStringAsync(originalPath, {
+      const base64 = await FileSystem.readAsStringAsync(absolutePath, {
         encoding: FileSystem.EncodingType.Base64,
       });
       zip.file(zipPath, base64, { base64: true });
@@ -192,15 +194,16 @@ export const restoreBackup = async (
 
         const zipPath = achievement.photoPath;
         const filename = zipPath.split("/").pop() ?? "";
-        const localPath = `${photosDir}${filename}`;
+        const absoluteLocalPath = `${photosDir}${filename}`;
+        const relativeLocalPath = `achievement-photos/${filename}`;
 
         const photoFile = zip.file(zipPath);
         if (photoFile) {
           const base64 = await photoFile.async("base64");
-          await FileSystem.writeAsStringAsync(localPath, base64, {
+          await FileSystem.writeAsStringAsync(absoluteLocalPath, base64, {
             encoding: FileSystem.EncodingType.Base64,
           });
-          return { ...achievement, photoPath: localPath };
+          return { ...achievement, photoPath: relativeLocalPath };
         }
 
         return { ...achievement, photoPath: undefined };
@@ -219,15 +222,16 @@ export const restoreBackup = async (
 
       const zipPath = profile.profilePhotoPath;
       const filename = zipPath.split("/").pop() ?? "";
-      const localPath = `${profilePhotosDir}${filename}`;
+      const absoluteLocalPath = `${profilePhotosDir}${filename}`;
+      const relativeLocalPath = `profile-photos/${filename}`;
 
       const photoFile = zip.file(zipPath);
       if (photoFile) {
         const base64 = await photoFile.async("base64");
-        await FileSystem.writeAsStringAsync(localPath, base64, {
+        await FileSystem.writeAsStringAsync(absoluteLocalPath, base64, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        return { ...profile, profilePhotoPath: localPath };
+        return { ...profile, profilePhotoPath: relativeLocalPath };
       }
 
       return { ...profile, profilePhotoPath: undefined };
