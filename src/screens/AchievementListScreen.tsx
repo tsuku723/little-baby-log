@@ -321,7 +321,7 @@ const AchievementListScreen: React.FC<Props> = () => {
             onPress={() =>
               rootNavigation.navigate("SettingsStack", {
                 screen: "ProfileEdit",
-                params: { profileId: user.id },
+                params: { profileId: user.id, returnTo: "RecordListStack" },
               })
             }
             size={64}

@@ -36,6 +36,8 @@ export type SettingsStackParamList = {
   ProfileEdit:
     | {
         profileId?: string;
+        // 別タブのアバターから開いた場合、保存/削除後に戻るタブ
+        returnTo?: "CalendarStack" | "RecordListStack";
       }
     | undefined;
   About: undefined;

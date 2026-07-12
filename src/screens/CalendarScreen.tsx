@@ -219,7 +219,7 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() =>
               rootNavigation.navigate("SettingsStack", {
                 screen: "ProfileEdit",
-                params: { profileId: user.id },
+                params: { profileId: user.id, returnTo: "CalendarStack" },
               })
             }
             size={64}
