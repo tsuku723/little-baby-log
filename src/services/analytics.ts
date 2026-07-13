@@ -1,5 +1,3 @@
-import analytics from "@react-native-firebase/analytics";
-
 const guard = async (fn: () => Promise<void>) => {
   if (__DEV__) return;
   try {
@@ -9,14 +7,16 @@ const guard = async (fn: () => Promise<void>) => {
   }
 };
 
-export const logRecordCreated = () =>
-  guard(() => analytics().logEvent("record_created"));
+const logEvent = (name: string) =>
+  guard(() => {
+    const analytics = require("@react-native-firebase/analytics").default;
+    return analytics().logEvent(name);
+  });
 
-export const logCalendarOpened = () =>
-  guard(() => analytics().logEvent("calendar_opened"));
+export const logRecordCreated = () => logEvent("record_created");
 
-export const logTodayOpened = () =>
-  guard(() => analytics().logEvent("today_opened"));
+export const logCalendarOpened = () => logEvent("calendar_opened");
 
-export const logProfileCreated = () =>
-  guard(() => analytics().logEvent("profile_created"));
+export const logTodayOpened = () => logEvent("today_opened");
+
+export const logProfileCreated = () => logEvent("profile_created");
