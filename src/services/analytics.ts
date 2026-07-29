@@ -1,3 +1,5 @@
+import type analytics from "@react-native-firebase/analytics";
+
 const guard = async (fn: () => Promise<void>) => {
   if (__DEV__) return;
   try {
@@ -9,8 +11,9 @@ const guard = async (fn: () => Promise<void>) => {
 
 const logEvent = (name: string) =>
   guard(() => {
-    const analytics = require("@react-native-firebase/analytics").default;
-    return analytics().logEvent(name);
+    const getAnalytics: typeof analytics =
+      require("@react-native-firebase/analytics").default;
+    return getAnalytics().logEvent(name);
   });
 
 export const logRecordCreated = () => logEvent("record_created");
