@@ -318,12 +318,6 @@ const AchievementListScreen: React.FC<Props> = () => {
           <UserAvatar
             name={user.name}
             profilePhotoPath={user.profilePhotoPath}
-            onPress={() =>
-              rootNavigation.navigate("SettingsStack", {
-                screen: "ProfileEdit",
-                params: { profileId: user.id, returnTo: "RecordListStack" },
-              })
-            }
             size={64}
           />
         ) : null}

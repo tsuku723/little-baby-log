@@ -216,12 +216,6 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
           <UserAvatar
             name={user.name}
             profilePhotoPath={user.profilePhotoPath}
-            onPress={() =>
-              rootNavigation.navigate("SettingsStack", {
-                screen: "ProfileEdit",
-                params: { profileId: user.id, returnTo: "CalendarStack" },
-              })
-            }
             size={64}
           />
         ) : null}
