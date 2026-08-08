@@ -3,13 +3,7 @@ import renderer, { act } from "react-test-renderer";
 
 import UserAvatar from "../src/components/UserAvatar";
 
-const mockOnPress = jest.fn();
-
 describe("UserAvatar UI (TS-UI-011)", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   test("profilePhotoPath あり: Image が描画される", async () => {
     let tree: any;
     await act(async () => {
@@ -17,7 +11,6 @@ describe("UserAvatar UI (TS-UI-011)", () => {
         React.createElement(UserAvatar, {
           name: "テストちゃん",
           profilePhotoPath: "/path/to/photo.jpg",
-          onPress: mockOnPress,
         })
       );
     });
@@ -35,7 +28,6 @@ describe("UserAvatar UI (TS-UI-011)", () => {
       tree = renderer.create(
         React.createElement(UserAvatar, {
           name: "テストちゃん",
-          onPress: mockOnPress,
         })
       );
     });
@@ -49,30 +41,11 @@ describe("UserAvatar UI (TS-UI-011)", () => {
       tree = renderer.create(
         React.createElement(UserAvatar, {
           name: "",
-          onPress: mockOnPress,
         })
       );
     });
     const json = JSON.stringify(tree.toJSON());
     expect(json).toContain("?");
-  });
-
-  test("タップ: onPress が呼ばれる", async () => {
-    let tree: any;
-    await act(async () => {
-      tree = renderer.create(
-        React.createElement(UserAvatar, {
-          name: "テストちゃん",
-          onPress: mockOnPress,
-        })
-      );
-    });
-    const instance = tree.root;
-    const touchable = instance.findByProps({ accessibilityRole: "button" });
-    await act(async () => {
-      touchable.props.onPress();
-    });
-    expect(mockOnPress).toHaveBeenCalledTimes(1);
   });
 
   test("size prop: 指定サイズで描画される", async () => {
@@ -81,7 +54,6 @@ describe("UserAvatar UI (TS-UI-011)", () => {
       tree = renderer.create(
         React.createElement(UserAvatar, {
           name: "テスト",
-          onPress: mockOnPress,
           size: 60,
         })
       );
@@ -98,7 +70,6 @@ describe("UserAvatar UI (TS-UI-011)", () => {
         React.createElement(UserAvatar, {
           name: "テストちゃん",
           profilePhotoPath: "/missing/photo.jpg",
-          onPress: mockOnPress,
         })
       );
     });
@@ -116,33 +87,46 @@ describe("UserAvatar UI (TS-UI-011)", () => {
     expect(JSON.stringify(tree.toJSON())).toContain("テ");
   });
 
-  test("accessibilityLabel: 名前ありの場合「${name}のプロフィールを編集」になる", async () => {
+  test("非インタラクティブ表示: accessibilityRole=button を持たない", async () => {
     let tree: any;
     await act(async () => {
       tree = renderer.create(
         React.createElement(UserAvatar, {
           name: "テストちゃん",
-          onPress: mockOnPress,
         })
       );
     });
-    const touchable = tree.root.findByProps({ accessibilityRole: "button" });
-    expect(touchable.props.accessibilityLabel).toBe(
-      "テストちゃんのプロフィールを編集"
-    );
+    expect(() =>
+      tree.root.findByProps({ accessibilityRole: "button" })
+    ).toThrow();
   });
 
-  test("accessibilityLabel: 名前なしの場合「プロフィールを編集」になる", async () => {
+  test("accessibilityLabel: 名前ありの場合「${name}のプロフィール写真」になる", async () => {
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(UserAvatar, {
+          name: "テストちゃん",
+        })
+      );
+    });
+    const image = tree.root.findByProps({ accessibilityRole: "image" });
+    expect(image.props.accessibilityLabel).toBe(
+      "テストちゃんのプロフィール写真"
+    );
+    expect(image.props.accessible).toBe(true);
+  });
+
+  test("accessibilityLabel: 名前なしの場合「プロフィール写真」になる", async () => {
     let tree: any;
     await act(async () => {
       tree = renderer.create(
         React.createElement(UserAvatar, {
           name: "",
-          onPress: mockOnPress,
         })
       );
     });
-    const touchable = tree.root.findByProps({ accessibilityRole: "button" });
-    expect(touchable.props.accessibilityLabel).toBe("プロフィールを編集");
+    const image = tree.root.findByProps({ accessibilityRole: "image" });
+    expect(image.props.accessibilityLabel).toBe("プロフィール写真");
   });
 });
