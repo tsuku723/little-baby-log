@@ -19,8 +19,12 @@ const UserAvatar: React.FC<Props> = ({ name, profilePhotoPath, size = 40 }) => {
 
   const showImage = Boolean(profilePhotoPath) && !imageError;
 
+  const label = name.trim()
+    ? `${name.trim()}のプロフィール写真`
+    : "プロフィール写真";
+
   return (
-    <View accessibilityLabel={name.trim() || undefined}>
+    <View accessible accessibilityRole="image" accessibilityLabel={label}>
       {showImage ? (
         <Image
           source={{ uri: resolvePhotoPath(profilePhotoPath!) }}

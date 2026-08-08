@@ -100,4 +100,33 @@ describe("UserAvatar UI (TS-UI-011)", () => {
       tree.root.findByProps({ accessibilityRole: "button" })
     ).toThrow();
   });
+
+  test("accessibilityLabel: 名前ありの場合「${name}のプロフィール写真」になる", async () => {
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(UserAvatar, {
+          name: "テストちゃん",
+        })
+      );
+    });
+    const image = tree.root.findByProps({ accessibilityRole: "image" });
+    expect(image.props.accessibilityLabel).toBe(
+      "テストちゃんのプロフィール写真"
+    );
+    expect(image.props.accessible).toBe(true);
+  });
+
+  test("accessibilityLabel: 名前なしの場合「プロフィール写真」になる", async () => {
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(UserAvatar, {
+          name: "",
+        })
+      );
+    });
+    const image = tree.root.findByProps({ accessibilityRole: "image" });
+    expect(image.props.accessibilityLabel).toBe("プロフィール写真");
+  });
 });
