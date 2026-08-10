@@ -2,7 +2,7 @@
   "expo": {
     "name": "リトルベビーログ",
     "slug": "little-baby-log",
-    "version": "1.7.4",
+    "version": "1.7.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "studio.teeda.littlebabylog",
-      "buildNumber": "18",
+      "buildNumber": "19",
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ja_JP",
@@ -49,7 +49,21 @@
         }
       ],
       "expo-font",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "「今日の記録」画面で作成した画像を写真アプリに保存するために使用します。",
+          "photosPermission": "成長記録に写真を添付するために使用します。",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
       "expo-tracking-transparency",
       [
         "react-native-google-mobile-ads",
