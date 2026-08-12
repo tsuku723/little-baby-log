@@ -74,7 +74,7 @@ describe("App / navigation / legal wrappers", () => {
   test("src/App.tsx: fonts未ロード時はnull", () => {
     mockUseFonts.mockReturnValue([false]);
     const App = require("../src/App").default;
-    let instance: renderer.ReactTestRenderer;
+    let instance: ReturnType<typeof renderer.create>;
     act(() => {
       instance = renderer.create(React.createElement(App));
     });
@@ -87,14 +87,14 @@ describe("App / navigation / legal wrappers", () => {
   test("src/App.tsx: fontsロード後はProviderチェーンを描画", async () => {
     mockUseFonts.mockReturnValue([true]);
     const App = require("../src/App").default;
-    let instance: renderer.ReactTestRenderer;
+    let instance: ReturnType<typeof renderer.create>;
     await act(async () => {
       instance = renderer.create(React.createElement(App));
     });
-    // useTrackingPermission がATT許諾フロー完了後に状態更新するため再レンダーが発生しうる
-    expect(mockAppStateProvider).toHaveBeenCalled();
-    expect(mockAchievementsProvider).toHaveBeenCalled();
-    expect(mockNavigationContainer).toHaveBeenCalled();
+    // isTrackingReady が false→true に変化するため初期描画+再描画の2回呼ばれる
+    expect(mockAppStateProvider).toHaveBeenCalledTimes(2);
+    expect(mockAchievementsProvider).toHaveBeenCalledTimes(2);
+    expect(mockNavigationContainer).toHaveBeenCalledTimes(2);
     act(() => {
       instance!.unmount();
     });
