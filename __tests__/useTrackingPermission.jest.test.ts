@@ -1,4 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react-native";
+import { AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Tracking from "expo-tracking-transparency";
 import { useTrackingPermission } from "../src/hooks/useTrackingPermission";
@@ -21,12 +22,14 @@ jest.mock("expo-tracking-transparency", () => ({
 const mockGetItem = AsyncStorage.getItem as jest.Mock;
 const mockSetItem = AsyncStorage.setItem as jest.Mock;
 const mockGetTracking = Tracking.getTrackingPermissionsAsync as jest.Mock;
-const mockRequestTracking = Tracking.requestTrackingPermissionsAsync as jest.Mock;
+const mockRequestTracking =
+  Tracking.requestTrackingPermissionsAsync as jest.Mock;
 
 describe("useTrackingPermission", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSetItem.mockResolvedValue(undefined);
+    AppState.currentState = "active";
   });
 
   test("ATTステータスが未決定のとき、requestTrackingPermissionsAsync を呼ぶ", async () => {
@@ -76,5 +79,31 @@ describe("useTrackingPermission", () => {
     });
     expect(mockGetTracking).not.toHaveBeenCalled();
     expect(mockRequestTracking).not.toHaveBeenCalled();
+  });
+
+  test("アプリがアクティブでないとき、activeになるまでリクエストを待つ", async () => {
+    // @ts-ignore
+    AppState.currentState = "background";
+    let changeHandler: ((state: string) => void) | undefined;
+    (AppState.addEventListener as jest.Mock).mockImplementation(
+      (_event, handler) => {
+        changeHandler = handler;
+        return { remove: jest.fn() };
+      }
+    );
+
+    mockGetItem.mockResolvedValue(null);
+    mockGetTracking.mockResolvedValue({ status: "undetermined" });
+    mockRequestTracking.mockResolvedValue({ status: "granted" });
+
+    renderHook(() => useTrackingPermission());
+
+    expect(mockGetTracking).not.toHaveBeenCalled();
+
+    changeHandler?.("active");
+
+    await waitFor(() => {
+      expect(mockRequestTracking).toHaveBeenCalledTimes(1);
+    });
   });
 });

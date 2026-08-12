@@ -74,22 +74,30 @@ describe("App / navigation / legal wrappers", () => {
   test("src/App.tsx: fonts未ロード時はnull", () => {
     mockUseFonts.mockReturnValue([false]);
     const App = require("../src/App").default;
-    let tree: any;
+    let instance: renderer.ReactTestRenderer;
     act(() => {
-      tree = renderer.create(React.createElement(App)).toJSON();
+      instance = renderer.create(React.createElement(App));
     });
-    expect(tree).toBeNull();
+    expect(instance!.toJSON()).toBeNull();
+    act(() => {
+      instance!.unmount();
+    });
   });
 
-  test("src/App.tsx: fontsロード後はProviderチェーンを描画", () => {
+  test("src/App.tsx: fontsロード後はProviderチェーンを描画", async () => {
     mockUseFonts.mockReturnValue([true]);
     const App = require("../src/App").default;
-    act(() => {
-      renderer.create(React.createElement(App));
+    let instance: renderer.ReactTestRenderer;
+    await act(async () => {
+      instance = renderer.create(React.createElement(App));
     });
-    expect(mockAppStateProvider).toHaveBeenCalledTimes(1);
-    expect(mockAchievementsProvider).toHaveBeenCalledTimes(1);
-    expect(mockNavigationContainer).toHaveBeenCalledTimes(1);
+    // useTrackingPermission がATT許諾フロー完了後に状態更新するため再レンダーが発生しうる
+    expect(mockAppStateProvider).toHaveBeenCalled();
+    expect(mockAchievementsProvider).toHaveBeenCalled();
+    expect(mockNavigationContainer).toHaveBeenCalled();
+    act(() => {
+      instance!.unmount();
+    });
   });
 
   test("index.ts: registerRootComponentを実行", () => {
