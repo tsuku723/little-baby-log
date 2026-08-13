@@ -1,15 +1,20 @@
 import React from "react";
 import { StatusBar, View } from "react-native";
 
-import { useFonts, ZenMaruGothic_400Regular, ZenMaruGothic_500Medium } from "@expo-google-fonts/zen-maru-gothic";
+import {
+  useFonts,
+  ZenMaruGothic_400Regular,
+  ZenMaruGothic_500Medium,
+} from "@expo-google-fonts/zen-maru-gothic";
 
 import Navigator from "@/navigation";
 import { AppStateProvider } from "@/state/AppStateContext";
 import { AchievementsProvider } from "@/state/AchievementsContext";
+import { TrackingReadyProvider } from "@/state/TrackingReadyContext";
 import { useTrackingPermission } from "@/hooks/useTrackingPermission";
 
 const App: React.FC = () => {
-  useTrackingPermission();
+  const isTrackingReady = useTrackingPermission();
   const [fontsLoaded] = useFonts({
     "ZenMaruGothic-Regular": ZenMaruGothic_400Regular,
     "ZenMaruGothic-Medium": ZenMaruGothic_500Medium,
@@ -22,7 +27,9 @@ const App: React.FC = () => {
       <StatusBar barStyle="dark-content" />
       <AppStateProvider>
         <AchievementsProvider>
-          <Navigator />
+          <TrackingReadyProvider value={isTrackingReady}>
+            <Navigator />
+          </TrackingReadyProvider>
         </AchievementsProvider>
       </AppStateProvider>
     </View>

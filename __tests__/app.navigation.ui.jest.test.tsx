@@ -74,22 +74,30 @@ describe("App / navigation / legal wrappers", () => {
   test("src/App.tsx: fonts未ロード時はnull", () => {
     mockUseFonts.mockReturnValue([false]);
     const App = require("../src/App").default;
-    let tree: any;
+    let instance: ReturnType<typeof renderer.create>;
     act(() => {
-      tree = renderer.create(React.createElement(App)).toJSON();
+      instance = renderer.create(React.createElement(App));
     });
-    expect(tree).toBeNull();
+    expect(instance!.toJSON()).toBeNull();
+    act(() => {
+      instance!.unmount();
+    });
   });
 
-  test("src/App.tsx: fontsロード後はProviderチェーンを描画", () => {
+  test("src/App.tsx: fontsロード後はProviderチェーンを描画", async () => {
     mockUseFonts.mockReturnValue([true]);
     const App = require("../src/App").default;
-    act(() => {
-      renderer.create(React.createElement(App));
+    let instance: ReturnType<typeof renderer.create>;
+    await act(async () => {
+      instance = renderer.create(React.createElement(App));
     });
-    expect(mockAppStateProvider).toHaveBeenCalledTimes(1);
-    expect(mockAchievementsProvider).toHaveBeenCalledTimes(1);
-    expect(mockNavigationContainer).toHaveBeenCalledTimes(1);
+    // isTrackingReady が false→true に変化するため初期描画+再描画の2回呼ばれる
+    expect(mockAppStateProvider).toHaveBeenCalledTimes(2);
+    expect(mockAchievementsProvider).toHaveBeenCalledTimes(2);
+    expect(mockNavigationContainer).toHaveBeenCalledTimes(2);
+    act(() => {
+      instance!.unmount();
+    });
   });
 
   test("index.ts: registerRootComponentを実行", () => {
