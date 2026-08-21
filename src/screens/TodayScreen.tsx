@@ -110,6 +110,18 @@ const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 const EXPORT_BACKGROUND_IMAGE = require("../../assets/export/bg_base_green.png");
 const EXPORT_DECORATION_IMAGE = require("../../assets/export/deco_overlay_green.png");
 
+// エクスポート画像（1024×1536px）上の座標・サイズ
+const EXPORT_CANVAS = { WIDTH: 1024, HEIGHT: 1536 } as const;
+const EXPORT_PHOTO_FRAME = {
+  LEFT: 114,
+  TOP: 161,
+  WIDTH: 796,
+  HEIGHT: 796,
+} as const;
+const EXPORT_AGE_BLOCK_TOP = 980;
+const EXPORT_RECORD_CARD = { LEFT: 114, RIGHT: 114, TOP: 1140 } as const;
+const EXPORT_DATE_BLOCK_TOP = 50;
+
 const TodayScreen: React.FC<Props> = ({
   navigation: stackNavigation,
   route,
@@ -739,12 +751,12 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   exportContainer: {
-    width: 1024,
-    height: 1536,
+    width: EXPORT_CANVAS.WIDTH,
+    height: EXPORT_CANVAS.HEIGHT,
   },
   exportContent: {
-    width: 1024,
-    height: 1536,
+    width: EXPORT_CANVAS.WIDTH,
+    height: EXPORT_CANVAS.HEIGHT,
   },
   exportBackground: {
     width: "100%",
@@ -755,10 +767,10 @@ const styles = StyleSheet.create({
   },
   exportPhotoFrame: {
     position: "absolute",
-    left: 114,
-    top: 161,
-    width: 796,
-    height: 796,
+    left: EXPORT_PHOTO_FRAME.LEFT,
+    top: EXPORT_PHOTO_FRAME.TOP,
+    width: EXPORT_PHOTO_FRAME.WIDTH,
+    height: EXPORT_PHOTO_FRAME.HEIGHT,
     borderRadius: 34,
     padding: 17,
     backgroundColor: "rgba(255,255,255,0.55)",
@@ -778,7 +790,7 @@ const styles = StyleSheet.create({
   },
   exportAgeBlock: {
     position: "absolute",
-    top: 980,
+    top: EXPORT_AGE_BLOCK_TOP,
     width: "100%",
     alignItems: "center",
     gap: 6,
@@ -796,9 +808,9 @@ const styles = StyleSheet.create({
   },
   exportRecordCard: {
     position: "absolute",
-    left: 114,
-    right: 114,
-    top: 1140,
+    left: EXPORT_RECORD_CARD.LEFT,
+    right: EXPORT_RECORD_CARD.RIGHT,
+    top: EXPORT_RECORD_CARD.TOP,
     borderRadius: 25,
     paddingVertical: 19,
     paddingHorizontal: 25,
@@ -819,7 +831,7 @@ const styles = StyleSheet.create({
   },
   exportDateBlock: {
     position: "absolute",
-    top: 50,
+    top: EXPORT_DATE_BLOCK_TOP,
     width: "100%",
     alignItems: "center",
     zIndex: 2,
