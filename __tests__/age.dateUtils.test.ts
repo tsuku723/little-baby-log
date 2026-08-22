@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 
-import { buildCalendarMonthView, calculateAgeInfo } from "../src/utils/dateUtils";
+import {
+  buildCalendarMonthView,
+  calculateAgeInfo,
+} from "../src/utils/dateUtils";
 
 const hasNegativeSign = (value: string) => value.includes("-");
 
-const shouldShowDaysText = (showDaysSinceBirth: boolean, daysSinceBirth: number): string | null =>
+const shouldShowDaysText = (
+  showDaysSinceBirth: boolean,
+  daysSinceBirth: number
+): string | null =>
   showDaysSinceBirth ? `生まれてから${daysSinceBirth}日目` : null;
 
 const monthEnd = calculateAgeInfo({
@@ -78,12 +84,12 @@ assert.equal(shouldShowDaysText(false, onDue.daysSinceBirth), null);
 
 console.log("age.dateUtils tests passed");
 
-
 const pretermSettings = {
   ageFormat: "md" as const,
   showCorrectedUntilMonths: null,
   showDaysSinceBirth: true,
   lastViewedMonth: null,
+  notifyMilestoneEnabled: false,
 };
 
 const februaryView = buildCalendarMonthView({
@@ -128,14 +134,13 @@ assert.ok(dec11);
 assert.equal(dec11?.calendarAgeLabel?.chronological != null, true);
 assert.equal(dec11?.calendarAgeLabel?.corrected == null, true);
 
-
 const dueOffsetSettings = {
   ageFormat: "ymd" as const,
   showCorrectedUntilMonths: null,
   showDaysSinceBirth: true,
   lastViewedMonth: null,
+  notifyMilestoneEnabled: false,
 };
-
 
 const preDueView = buildCalendarMonthView({
   anchorDate: new Date(2026, 0, 1),
@@ -159,7 +164,9 @@ const correctedFebView = buildCalendarMonthView({
 const feb10 = correctedFebView.days.find((day) => day.date === "2026-02-10");
 assert.ok(feb10);
 assert.equal(feb10?.calendarAgeLabel?.corrected, "修正 0才1ヶ月");
-const correctedFeb1 = correctedFebView.days.find((day) => day.date === "2026-02-01");
+const correctedFeb1 = correctedFebView.days.find(
+  (day) => day.date === "2026-02-01"
+);
 assert.ok(correctedFeb1);
 assert.equal(correctedFeb1?.calendarAgeLabel?.corrected == null, true);
 
@@ -172,7 +179,9 @@ const correctedMarView = buildCalendarMonthView({
 const mar10 = correctedMarView.days.find((day) => day.date === "2026-03-10");
 assert.ok(mar10);
 assert.equal(mar10?.calendarAgeLabel?.corrected, "修正 0才2ヶ月");
-const correctedMar1 = correctedMarView.days.find((day) => day.date === "2026-03-01");
+const correctedMar1 = correctedMarView.days.find(
+  (day) => day.date === "2026-03-01"
+);
 assert.ok(correctedMar1);
 assert.equal(correctedMar1?.calendarAgeLabel?.corrected == null, true);
 

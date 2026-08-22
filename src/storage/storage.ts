@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { Achievement, AchievementStore, UserSettings } from "../models/dataModels";
+import {
+  Achievement,
+  AchievementStore,
+  UserSettings,
+} from "../models/dataModels";
 import { normalizeToUtcDate, toIsoDateString } from "../utils/dateUtils";
 
 export const STORAGE_KEYS = {
@@ -14,6 +18,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   ageFormat: "ymd",
   showDaysSinceBirth: true,
   lastViewedMonth: null,
+  notifyMilestoneEnabled: false,
 };
 
 const DEFAULT_ACHIEVEMENTS: AchievementStore = {};
@@ -62,13 +67,17 @@ const ensureTimestamps = (record: Achievement, now: string): Achievement => {
 
 const isMapFormat = (input: unknown): input is AchievementStore => {
   if (!input || typeof input !== "object" || Array.isArray(input)) return false;
-  return Object.entries(input as Record<string, unknown>).every(([_, value]) => {
-    if (!Array.isArray(value)) return false;
-    return value.every((item) => {
-      const rec = item as Achievement;
-      return typeof rec === "object" && !!rec?.date && typeof rec.date === "string";
-    });
-  });
+  return Object.entries(input as Record<string, unknown>).every(
+    ([_, value]) => {
+      if (!Array.isArray(value)) return false;
+      return value.every((item) => {
+        const rec = item as Achievement;
+        return (
+          typeof rec === "object" && !!rec?.date && typeof rec.date === "string"
+        );
+      });
+    }
+  );
 };
 
 const migrateToMap = async (input: unknown): Promise<AchievementStore> => {
@@ -114,9 +123,13 @@ const migrateToMap = async (input: unknown): Promise<AchievementStore> => {
 
 // レガシー互換: 過去バージョンでは birthDate / dueDate を設定に保存していた。
 // ここでは UserSettings に含めず、あくまで表示設定のみ返却する。
-export const loadUserSettings = async (): Promise<UserSettings & { birthDate?: string; dueDate?: string | null }> => {
+export const loadUserSettings = async (): Promise<
+  UserSettings & { birthDate?: string; dueDate?: string | null }
+> => {
   const raw = await AsyncStorage.getItem(STORAGE_KEYS.userSettings);
-  const parsed = safeParse<UserSettings & { birthDate?: string; dueDate?: string | null }>(raw, DEFAULT_SETTINGS);
+  const parsed = safeParse<
+    UserSettings & { birthDate?: string; dueDate?: string | null }
+  >(raw, DEFAULT_SETTINGS);
   return { ...DEFAULT_SETTINGS, ...parsed };
 };
 

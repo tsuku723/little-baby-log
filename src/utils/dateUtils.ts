@@ -5,6 +5,7 @@ import {
   CalendarMonthView,
   UserSettings,
 } from "../models/dataModels";
+import { getDayMilestoneBadge } from "./milestones";
 
 type AgeParts = { years: number; months: number; days: number };
 
@@ -34,7 +35,9 @@ const parseIsoDateStrict = (isoDate: string): Date | null => {
   return parsed;
 };
 
-export const normalizeToUtcDate = (isoDate: string | null | undefined): Date => {
+export const normalizeToUtcDate = (
+  isoDate: string | null | undefined
+): Date => {
   if (isoDate == null || isoDate === "") {
     console.warn("normalizeToUtcDate: isoDate が未定義です", isoDate);
     return new Date(NaN);
@@ -49,7 +52,10 @@ export const normalizeToUtcDate = (isoDate: string | null | undefined): Date => 
   return parsed;
 };
 
-export const safeParseIsoLocal = (isoDate: string | null | undefined, fallback: Date): Date => {
+export const safeParseIsoLocal = (
+  isoDate: string | null | undefined,
+  fallback: Date
+): Date => {
   const parsed = isoDate ? parseIsoDateStrict(isoDate) : null;
   if (parsed) return parsed;
   return toUtcDateOnly(fallback);
@@ -73,7 +79,8 @@ export const toIsoDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-export const todayIsoDate = (): string => toIsoDateString(toUtcDateOnly(new Date()));
+export const todayIsoDate = (): string =>
+  toIsoDateString(toUtcDateOnly(new Date()));
 
 const utcDateMs = (date: Date): number =>
   Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
@@ -102,7 +109,8 @@ const diffYmdAnchored = (start: Date, end: Date): AgeParts => {
   }
 
   let totalMonths =
-    (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth());
 
   let anchor = addMonthsClamped(start, totalMonths);
   if (utcDateMs(anchor) > utcDateMs(end)) {
@@ -126,10 +134,14 @@ const formatAge = (parts: AgeParts, ageFormat: AgeFormat): string => {
   return `${parts.years}才${parts.months}ヶ月${parts.days}日`;
 };
 
-const totalMonthsFromParts = (parts: { years: number; months: number }): number =>
-  parts.years * 12 + parts.months;
+const totalMonthsFromParts = (parts: {
+  years: number;
+  months: number;
+}): number => parts.years * 12 + parts.months;
 
-const toYearMonthFromTotalMonths = (totalMonths: number): { years: number; months: number } => ({
+const toYearMonthFromTotalMonths = (
+  totalMonths: number
+): { years: number; months: number } => ({
   years: Math.floor(totalMonths / 12),
   months: totalMonths % 12,
 });
@@ -146,7 +158,8 @@ export const formatCalendarAgeLabel = (
   return `${labelPrefix}${parts.years}才${parts.months}ヶ月`;
 };
 
-const formatGestational = (weeks: number, days: number): string => `${weeks}週${days}日`;
+const formatGestational = (weeks: number, days: number): string =>
+  `${weeks}週${days}日`;
 
 const isWithinCorrectedLimit = (
   parts: AgeParts,
@@ -189,7 +202,10 @@ export const calculateAgeInfo = (params: {
   const isPreterm = Boolean(due) && gestationAtBirthDays < 259;
 
   const isBeforeDue = Boolean(due && utcDateMs(target) < utcDateMs(due));
-  const correctedParts = due && isPreterm ? diffYmdAnchored(due, target) : { years: 0, months: 0, days: 0 };
+  const correctedParts =
+    due && isPreterm
+      ? diffYmdAnchored(due, target)
+      : { years: 0, months: 0, days: 0 };
   const correctedVisible =
     Boolean(due) &&
     isPreterm &&
@@ -199,8 +215,11 @@ export const calculateAgeInfo = (params: {
   const gestationAtTargetDays = gestationAtBirthDays + daysSinceBirth;
   const gestationalWeeks = Math.floor(gestationAtTargetDays / 7);
   const gestationalDays = gestationAtTargetDays % 7;
-  const gestationalVisible = Boolean(due) && isPreterm && isBeforeDue
-    && utcDateMs(target) >= utcDateMs(birth); // 出生日前は在胎非表示
+  const gestationalVisible =
+    Boolean(due) &&
+    isPreterm &&
+    isBeforeDue &&
+    utcDateMs(target) >= utcDateMs(birth); // 出生日前は在胎非表示
 
   const showMode: AgeInfo["flags"]["showMode"] = !isPreterm
     ? "chronologicalOnly"
@@ -217,13 +236,17 @@ export const calculateAgeInfo = (params: {
     corrected: {
       parts: correctedParts,
       ...correctedParts,
-      formatted: correctedVisible ? formatAge(correctedParts, params.ageFormat) : null,
+      formatted: correctedVisible
+        ? formatAge(correctedParts, params.ageFormat)
+        : null,
       visible: correctedVisible,
     },
     gestational: {
       weeks: gestationalWeeks,
       days: gestationalDays,
-      formatted: gestationalVisible ? formatGestational(gestationalWeeks, gestationalDays) : null,
+      formatted: gestationalVisible
+        ? formatGestational(gestationalWeeks, gestationalDays)
+        : null,
       visible: gestationalVisible,
     },
     flags: {
@@ -264,15 +287,21 @@ export const buildCalendarMonthView = ({
   const startDate = startOfCalendarGrid(anchorDate);
   const firstDay = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
   const startDay = firstDay.getDay();
-  const daysInCurrentMonth = daysInMonth(anchorDate.getFullYear(), anchorDate.getMonth() + 1);
+  const daysInCurrentMonth = daysInMonth(
+    anchorDate.getFullYear(),
+    anchorDate.getMonth() + 1
+  );
   const totalCells = startDay + daysInCurrentMonth;
   const weeks = Math.max(5, Math.min(6, Math.ceil(totalCells / 7)));
   const cellCount = weeks * 7;
   const todayIso = todayIsoDate();
   const days: CalendarDay[] = [];
   const hasValidBirthDate = Boolean(birthDate) && isIsoDateString(birthDate);
-  const normalizedDueDate = dueDate && isIsoDateString(dueDate) ? dueDate : null;
-  const dueDayOfMonth = normalizedDueDate ? normalizeToUtcDate(normalizedDueDate).getDate() : null;
+  const normalizedDueDate =
+    dueDate && isIsoDateString(dueDate) ? dueDate : null;
+  const dueDayOfMonth = normalizedDueDate
+    ? normalizeToUtcDate(normalizedDueDate).getDate()
+    : null;
   const birthToDueTotalMonths =
     hasValidBirthDate && normalizedDueDate
       ? totalMonthsFromParts(
@@ -308,41 +337,68 @@ export const buildCalendarMonthView = ({
 
     const isBirthDay = Boolean(birthDate && iso === birthDate);
     const chronologicalChanged =
-      Boolean(ageInfo && previousAgeInfo &&
-      totalMonthsFromParts(ageInfo.chronological) === totalMonthsFromParts(previousAgeInfo.chronological) + 1) || isBirthDay;
+      Boolean(
+        ageInfo &&
+        previousAgeInfo &&
+        totalMonthsFromParts(ageInfo.chronological) ===
+          totalMonthsFromParts(previousAgeInfo.chronological) + 1
+      ) || isBirthDay;
 
-    const correctedVisible = ageInfo?.corrected.visible === true && ageInfo.corrected.formatted != null;
-    const chronologicalTotalMonths = ageInfo ? totalMonthsFromParts(ageInfo.chronological) : -1;
+    const correctedVisible =
+      ageInfo?.corrected.visible === true &&
+      ageInfo.corrected.formatted != null;
+    const chronologicalTotalMonths = ageInfo
+      ? totalMonthsFromParts(ageInfo.chronological)
+      : -1;
     const correctedCurrentTotalMonths =
       correctedVisible && birthToDueTotalMonths != null
         ? chronologicalTotalMonths - birthToDueTotalMonths
         : -1;
-    const daysInTargetMonth = daysInMonth(date.getFullYear(), date.getMonth() + 1);
+    const daysInTargetMonth = daysInMonth(
+      date.getFullYear(),
+      date.getMonth() + 1
+    );
     const isDueAnniversary =
       dueDayOfMonth != null &&
       (date.getDate() === dueDayOfMonth ||
-        (dueDayOfMonth > daysInTargetMonth && date.getDate() === daysInTargetMonth));
+        (dueDayOfMonth > daysInTargetMonth &&
+          date.getDate() === daysInTargetMonth));
     // 修正月齢ラベルは月初ではなく、予定日と同じ日付（なければ月末）にのみ表示する。
     const correctedChanged = correctedVisible && isDueAnniversary;
 
-    const gestationalVisible = ageInfo?.gestational.visible === true && ageInfo.gestational.formatted != null;
+    const gestationalVisible =
+      ageInfo?.gestational.visible === true &&
+      ageInfo.gestational.formatted != null;
     const previousGestationalVisible =
-      previousAgeInfo?.gestational.visible === true && previousAgeInfo.gestational.formatted != null;
+      previousAgeInfo?.gestational.visible === true &&
+      previousAgeInfo.gestational.formatted != null;
     const gestationalChanged =
       gestationalVisible &&
-      ((previousGestationalVisible && ageInfo!.gestational.weeks === previousAgeInfo!.gestational.weeks + 1) ||
+      ((previousGestationalVisible &&
+        ageInfo!.gestational.weeks ===
+          previousAgeInfo!.gestational.weeks + 1) ||
         !previousGestationalVisible ||
         isBirthDay); // 出生日は前日と在胎週数が同じになるため強制表示
 
     let calendarAgeLabel =
-      ageInfo && (chronologicalChanged || correctedChanged || gestationalChanged)
+      ageInfo &&
+      (chronologicalChanged || correctedChanged || gestationalChanged)
         ? {
             chronological: chronologicalChanged
-              ? (isBirthDay ? "誕生日" : formatCalendarAgeLabel(ageInfo.chronological, settings.ageFormat, false))
+              ? isBirthDay
+                ? "誕生日"
+                : formatCalendarAgeLabel(
+                    ageInfo.chronological,
+                    settings.ageFormat,
+                    false
+                  )
               : undefined,
             corrected: correctedChanged
               ? (() => {
-                  const correctedDisplayMonths = Math.max(correctedCurrentTotalMonths, 0);
+                  const correctedDisplayMonths = Math.max(
+                    correctedCurrentTotalMonths,
+                    0
+                  );
                   return formatCalendarAgeLabel(
                     toYearMonthFromTotalMonths(correctedDisplayMonths),
                     settings.ageFormat,
@@ -360,6 +416,11 @@ export const buildCalendarMonthView = ({
       calendarAgeLabel = null;
     }
 
+    const milestoneBadge =
+      isCurrentMonth && ageInfo
+        ? getDayMilestoneBadge(ageInfo.daysSinceBirth)
+        : null;
+
     days.push({
       date: iso,
       isCurrentMonth,
@@ -368,6 +429,7 @@ export const buildCalendarMonthView = ({
       calendarAgeLabel,
       achievementCount: achievementCountsByDay?.[iso] ?? 0,
       hasAchievements: (achievementCountsByDay?.[iso] ?? 0) > 0,
+      milestoneBadge,
     });
 
     previousAgeInfo = ageInfo;
@@ -380,7 +442,10 @@ export const buildCalendarMonthView = ({
 
   if (!hasChronologicalLabelInMonth) {
     // 誕生日前のセルに暦月齢を補完表示しないため、birthDate 以降のセルのみ対象にする。
-    const fallbackDay = monthDays.find((day) => day.ageInfo != null && (birthDate == null || day.date >= birthDate));
+    const fallbackDay = monthDays.find(
+      (day) =>
+        day.ageInfo != null && (birthDate == null || day.date >= birthDate)
+    );
     if (fallbackDay?.ageInfo) {
       const fallbackChronologicalLabel = formatCalendarAgeLabel(
         fallbackDay.ageInfo.chronological,

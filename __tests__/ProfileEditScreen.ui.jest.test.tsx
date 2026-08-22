@@ -1,5 +1,7 @@
 import React from "react";
 import renderer, { act } from "react-test-renderer";
+import { Switch } from "react-native";
+import * as Notifications from "expo-notifications";
 
 let mockAppState: any = { users: [], activeUserId: null };
 const mockAddUser = jest.fn().mockResolvedValue(undefined);
@@ -91,6 +93,7 @@ describe("ProfileEditScreen UI (TS-UI-009)", () => {
         ageFormat: "ymd" as const,
         showDaysSinceBirth: true,
         lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
       },
     };
     mockAppState = {
@@ -165,6 +168,7 @@ describe("ProfileEditScreen UI (TS-UI-009)", () => {
         ageFormat: "ymd" as const,
         showDaysSinceBirth: true,
         lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
       },
     };
     mockAppState = { users: [existingUser], activeUserId: "u1" };
@@ -202,6 +206,7 @@ describe("ProfileEditScreen UI (TS-UI-009)", () => {
         ageFormat: "ymd" as const,
         showDaysSinceBirth: true,
         lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
       },
     };
     mockAppState = { users: [existingUser], activeUserId: "u1" };
@@ -227,6 +232,87 @@ describe("ProfileEditScreen UI (TS-UI-009)", () => {
     expect(mockParentNavigate).toHaveBeenCalledWith("RecordListStack", {
       screen: "AchievementList",
     });
+  });
+
+  test("マイルストーン通知トグルが表示される", async () => {
+    mockAppState = { users: [], activeUserId: null };
+    const routeNew = { params: {} };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route: routeNew,
+        })
+      );
+    });
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain("マイルストーン通知");
+  });
+
+  test("通知トグルをONにすると権限をリクエストし、許可されればONになる", async () => {
+    (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: "undetermined",
+    });
+    (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: "granted",
+    });
+
+    mockAppState = { users: [], activeUserId: null };
+    const routeNew = { params: {} };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route: routeNew,
+        })
+      );
+    });
+
+    const toggle = tree.root.findAllByType(Switch)[1];
+    await act(async () => {
+      toggle.props.onValueChange(true);
+    });
+
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
+    const updatedToggle = tree.root.findAllByType(Switch)[1];
+    expect(updatedToggle.props.value).toBe(true);
+  });
+
+  test("通知権限が拒否されるとトグルはOFFのままになる", async () => {
+    (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: "undetermined",
+    });
+    (Notifications.requestPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: "denied",
+    });
+
+    mockAppState = { users: [], activeUserId: null };
+    const routeNew = { params: {} };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route: routeNew,
+        })
+      );
+    });
+
+    const toggle = tree.root.findAllByType(Switch)[1];
+    await act(async () => {
+      toggle.props.onValueChange(true);
+    });
+
+    const updatedToggle = tree.root.findAllByType(Switch)[1];
+    expect(updatedToggle.props.value).toBe(false);
   });
 
   test("returnTo 未指定時、キャンセルは通常の goBack のまま", async () => {

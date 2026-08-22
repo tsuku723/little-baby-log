@@ -13,6 +13,7 @@ describe("types/models DEFAULT_SETTINGS", () => {
       ageFormat: "ymd",
       showDaysSinceBirth: true,
       lastViewedMonth: null,
+      notifyMilestoneEnabled: false,
     });
   });
 
