@@ -445,15 +445,26 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
       profiles: UserProfile[],
       achievements: Record<string, Achievement[]>
     ) => {
+      const previousUserIds = state.users.map((u) => u.id);
       const nextState = ensureStateIntegrity({
         users: profiles,
         activeUserId: profiles[0]?.id ?? null,
         achievements,
       });
+
       setState(nextState);
       await persistState(nextState);
+
+      const nextUserIds = new Set(nextState.users.map((u) => u.id));
+      const removedUserIds = previousUserIds.filter(
+        (id) => !nextUserIds.has(id)
+      );
+      await Promise.all(
+        removedUserIds.map((id) => cancelMilestoneNotificationsForUserAsync(id))
+      );
+      void syncMilestoneNotificationsAsync(nextState.users);
     },
-    []
+    [state]
   );
 
   const value = useMemo(

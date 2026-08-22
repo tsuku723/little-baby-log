@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
   Image,
@@ -100,6 +106,12 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
       notifyMilestoneEnabled: false,
     };
   });
+
+  // 通知許可リクエスト中にユーザーがトグルを再操作した場合、
+  // 古いリクエストの結果で上書きしないよう最新の意図を追跡する
+  const notificationToggleIntentRef = useRef(
+    draftSettings.notifyMilestoneEnabled
+  );
 
   const startOfLocalDay = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -294,12 +306,17 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleToggleMilestoneNotification = async (value: boolean) => {
+    notificationToggleIntentRef.current = value;
+
     if (!value) {
       setDraftSettings((prev) => ({ ...prev, notifyMilestoneEnabled: false }));
       return;
     }
 
     const granted = await requestNotificationPermissionAsync();
+    // リクエスト中にユーザーがOFFへ切り替えていた場合、古い結果で上書きしない
+    if (notificationToggleIntentRef.current !== true) return;
+
     if (!granted) {
       Alert.alert(
         "通知が許可されていません",

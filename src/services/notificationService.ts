@@ -52,25 +52,30 @@ export const scheduleMilestoneNotificationsForUserAsync = async (
   const windowEnd = new Date();
   windowEnd.setDate(windowEnd.getDate() + SCHEDULE_WINDOW_DAYS);
 
-  for (const milestone of milestones) {
-    if (milestone.date <= todayIso) continue;
+  const targets = milestones
+    .filter((milestone) => milestone.date > todayIso)
+    .map((milestone) => {
+      const [y, m, d] = milestone.date.split("-").map(Number);
+      const triggerDate = new Date(y, m - 1, d, NOTIFICATION_HOUR, 0, 0);
+      return { milestone, triggerDate };
+    })
+    .filter(({ triggerDate }) => triggerDate <= windowEnd);
 
-    const [y, m, d] = milestone.date.split("-").map(Number);
-    const triggerDate = new Date(y, m - 1, d, NOTIFICATION_HOUR, 0, 0);
-    if (triggerDate > windowEnd) continue;
-
-    await Notifications.scheduleNotificationAsync({
-      identifier: buildIdentifier(user.id, milestone.key),
-      content: {
-        title: `${user.name}の成長記録`,
-        body: milestone.title,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: triggerDate,
-      },
-    });
-  }
+  await Promise.all(
+    targets.map(({ milestone, triggerDate }) =>
+      Notifications.scheduleNotificationAsync({
+        identifier: buildIdentifier(user.id, milestone.key),
+        content: {
+          title: `${user.name}の成長記録`,
+          body: milestone.title,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: triggerDate,
+        },
+      })
+    )
+  );
 };
 
 /**
@@ -80,11 +85,11 @@ export const scheduleMilestoneNotificationsForUserAsync = async (
 export const syncMilestoneNotificationsAsync = async (
   users: UserProfile[]
 ): Promise<void> => {
-  for (const user of users) {
-    if (user.settings.notifyMilestoneEnabled) {
-      await scheduleMilestoneNotificationsForUserAsync(user);
-    } else {
-      await cancelMilestoneNotificationsForUserAsync(user.id);
-    }
-  }
+  await Promise.all(
+    users.map((user) =>
+      user.settings.notifyMilestoneEnabled
+        ? scheduleMilestoneNotificationsForUserAsync(user)
+        : cancelMilestoneNotificationsForUserAsync(user.id)
+    )
+  );
 };

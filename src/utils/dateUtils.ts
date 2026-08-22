@@ -85,7 +85,7 @@ export const todayIsoDate = (): string =>
 const utcDateMs = (date: Date): number =>
   Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
 
-const addMonthsClamped = (base: Date, monthsToAdd: number): Date => {
+export const addMonthsClamped = (base: Date, monthsToAdd: number): Date => {
   const baseYear = base.getFullYear();
   const baseMonth = base.getMonth();
   const baseDay = base.getDate();

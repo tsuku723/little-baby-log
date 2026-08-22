@@ -1,6 +1,8 @@
 import {
+  addMonthsClamped,
   calculateAgeInfo,
   isIsoDateString,
+  normalizeToUtcDate,
   toIsoDateString,
 } from "./dateUtils";
 
@@ -27,15 +29,8 @@ const addDaysIso = (baseIso: string, days: number): string => {
   return toIsoDateString(date);
 };
 
-const addMonthsIso = (baseIso: string, months: number): string => {
-  const [y, m, d] = baseIso.split("-").map(Number);
-  const totalMonths = m - 1 + months;
-  const targetYear = y + Math.floor(totalMonths / 12);
-  const targetMonth = ((totalMonths % 12) + 12) % 12;
-  const maxDay = new Date(targetYear, targetMonth + 1, 0).getDate();
-  const targetDay = Math.min(d, maxDay);
-  return toIsoDateString(new Date(targetYear, targetMonth, targetDay));
-};
+const addMonthsIso = (baseIso: string, months: number): string =>
+  toIsoDateString(addMonthsClamped(normalizeToUtcDate(baseIso), months));
 
 /**
  * 誕生日(birthDate)・出産予定日(dueDate)から、通知・カレンダー表示対象の
