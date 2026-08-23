@@ -123,6 +123,30 @@ describe("dateUtils exported functions", () => {
     ).toBeNull();
   });
 
+  test("buildCalendarMonthView sets milestoneBadge to 誕生日 on every birthday anniversary", () => {
+    const firstBirthdayView = buildCalendarMonthView({
+      anchorDate: new Date(2025, 0, 1),
+      settings,
+      birthDate: "2024-01-01",
+      dueDate: null,
+    });
+    expect(
+      firstBirthdayView.days.find((d) => d.date === "2025-01-01")
+        ?.milestoneBadge
+    ).toBe("誕生日");
+
+    const secondBirthdayView = buildCalendarMonthView({
+      anchorDate: new Date(2026, 0, 1),
+      settings,
+      birthDate: "2024-01-01",
+      dueDate: null,
+    });
+    expect(
+      secondBirthdayView.days.find((d) => d.date === "2026-01-01")
+        ?.milestoneBadge
+    ).toBe("誕生日");
+  });
+
   test("buildCalendarMonthView keeps corrected label on due-day fallback at month end", () => {
     const view = buildCalendarMonthView({
       anchorDate: new Date(2025, 1, 1),

@@ -5,7 +5,7 @@ import {
   CalendarMonthView,
   UserSettings,
 } from "../models/dataModels";
-import { getDayMilestoneBadge } from "./milestones";
+import { getBirthdayMilestoneBadge, getDayMilestoneBadge } from "./milestones";
 
 type AgeParts = { years: number; months: number; days: number };
 
@@ -418,7 +418,8 @@ export const buildCalendarMonthView = ({
 
     const milestoneBadge =
       isCurrentMonth && ageInfo
-        ? getDayMilestoneBadge(ageInfo.daysSinceBirth)
+        ? (getBirthdayMilestoneBadge(ageInfo.chronological) ??
+          getDayMilestoneBadge(ageInfo.daysSinceBirth))
         : null;
 
     days.push({

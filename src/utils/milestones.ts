@@ -15,12 +15,15 @@ export type Milestone = {
 const DAY_MILESTONES: { days: number; title: string }[] = [
   { days: 100, title: "生まれてから100日目です" },
   { days: 200, title: "生まれてから200日目です" },
-  { days: 365, title: "1歳のお誕生日です🎉" },
   { days: 1000, title: "生まれてから1000日目です" },
 ];
 
 // 修正月齢の概念が一般的に使われる期間に合わせる
 const MONTH_MILESTONE_LIMIT = 24;
+
+// 誕生日は実用上十分な年数まで生成しておく（実際に通知予約されるのは
+// スケジュール可能な直近期間のみのため、長期の計算コストは問題にならない）
+const BIRTHDAY_YEARS_LIMIT = 100;
 
 const addDaysIso = (baseIso: string, days: number): string => {
   const [y, m, d] = baseIso.split("-").map(Number);
@@ -31,6 +34,9 @@ const addDaysIso = (baseIso: string, days: number): string => {
 
 const addMonthsIso = (baseIso: string, months: number): string =>
   toIsoDateString(addMonthsClamped(normalizeToUtcDate(baseIso), months));
+
+const addYearsIso = (baseIso: string, years: number): string =>
+  addMonthsIso(baseIso, years * 12);
 
 /**
  * 誕生日(birthDate)・出産予定日(dueDate)から、通知・カレンダー表示対象の
@@ -50,6 +56,14 @@ export const calculateMilestones = (params: {
       key: `days-${days}`,
       date: addDaysIso(birthDate, days),
       title,
+    });
+  }
+
+  for (let year = 1; year <= BIRTHDAY_YEARS_LIMIT; year += 1) {
+    milestones.push({
+      key: `birthday-${year}`,
+      date: addYearsIso(birthDate, year),
+      title: `${year}歳のお誕生日です🎉`,
     });
   }
 
@@ -88,10 +102,25 @@ export const calculateMilestones = (params: {
 
 /**
  * 生まれてからの日数(daysSinceBirth)がカレンダーセルにバッジ表示すべき
- * 節目(100/200/365/1000日目)かどうかを判定する。
+ * 節目(100/200/1000日目)かどうかを判定する。
  */
 export const getDayMilestoneBadge = (daysSinceBirth: number): string | null => {
   const found = DAY_MILESTONES.find((m) => m.days === daysSinceBirth);
-  if (!found) return null;
-  return found.days === 365 ? "1歳" : `${found.days}日`;
+  return found ? `${found.days}日` : null;
+};
+
+/**
+ * 暦年齢がちょうどN歳(N>=1)になった日かどうかを判定する。
+ * 誕生日は年数の上限なく毎年バッジ表示の対象とする。
+ */
+export const getBirthdayMilestoneBadge = (chronological: {
+  years: number;
+  months: number;
+  days: number;
+}): string | null => {
+  const isBirthday =
+    chronological.years >= 1 &&
+    chronological.months === 0 &&
+    chronological.days === 0;
+  return isBirthday ? "誕生日" : null;
 };

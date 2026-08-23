@@ -1,10 +1,11 @@
 import {
   calculateMilestones,
+  getBirthdayMilestoneBadge,
   getDayMilestoneBadge,
 } from "../src/utils/milestones";
 
 describe("calculateMilestones", () => {
-  it("正期産児は日数マイルストーンと暦月齢のみを含み、修正月齢を含まない", () => {
+  it("正期産児は日数マイルストーン・誕生日・暦月齢を含み、修正月齢を含まない", () => {
     const milestones = calculateMilestones({
       birthDate: "2024-01-01",
       dueDate: null,
@@ -13,8 +14,10 @@ describe("calculateMilestones", () => {
     const keys = milestones.map((m) => m.key);
     expect(keys).toContain("days-100");
     expect(keys).toContain("days-200");
-    expect(keys).toContain("days-365");
     expect(keys).toContain("days-1000");
+    expect(keys).toContain("birthday-1");
+    expect(keys).toContain("birthday-2");
+    expect(keys).toContain("birthday-100");
     expect(keys).toContain("chronological-1");
     expect(keys).toContain("chronological-24");
     expect(keys.some((k) => k.startsWith("corrected-"))).toBe(false);
@@ -26,10 +29,10 @@ describe("calculateMilestones", () => {
       dueDate: null,
     });
     const days100 = milestones.find((m) => m.key === "days-100");
-    const days365 = milestones.find((m) => m.key === "days-365");
+    const birthday1 = milestones.find((m) => m.key === "birthday-1");
 
     expect(days100?.date).toBe("2024-04-10");
-    expect(days365?.date).toBe("2024-12-31");
+    expect(birthday1?.date).toBe("2025-01-01");
   });
 
   it("暦月齢マイルストーンの日付を正しく計算する", () => {
@@ -80,12 +83,35 @@ describe("getDayMilestoneBadge", () => {
     expect(getDayMilestoneBadge(1000)).toBe("1000日");
   });
 
-  it("365日目は「1歳」を返す", () => {
-    expect(getDayMilestoneBadge(365)).toBe("1歳");
-  });
-
   it("対象外の日数はnullを返す", () => {
     expect(getDayMilestoneBadge(99)).toBeNull();
     expect(getDayMilestoneBadge(0)).toBeNull();
+    expect(getDayMilestoneBadge(365)).toBeNull();
+  });
+});
+
+describe("getBirthdayMilestoneBadge", () => {
+  it("ちょうどN歳(N>=1)の日は「誕生日」を返す", () => {
+    expect(getBirthdayMilestoneBadge({ years: 1, months: 0, days: 0 })).toBe(
+      "誕生日"
+    );
+    expect(getBirthdayMilestoneBadge({ years: 2, months: 0, days: 0 })).toBe(
+      "誕生日"
+    );
+    expect(getBirthdayMilestoneBadge({ years: 10, months: 0, days: 0 })).toBe(
+      "誕生日"
+    );
+  });
+
+  it("誕生日以外の日はnullを返す", () => {
+    expect(
+      getBirthdayMilestoneBadge({ years: 0, months: 0, days: 0 })
+    ).toBeNull();
+    expect(
+      getBirthdayMilestoneBadge({ years: 1, months: 1, days: 0 })
+    ).toBeNull();
+    expect(
+      getBirthdayMilestoneBadge({ years: 1, months: 0, days: 1 })
+    ).toBeNull();
   });
 });

@@ -74,7 +74,7 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
   }
 
   if (bottomLabel == null && day.milestoneBadge) {
-    bottomLabel = `🎉${day.milestoneBadge}`;
+    bottomLabel = day.milestoneBadge;
     bottomStickerStyle = styles.ageStickerMilestone;
     bottomTextStyle = styles.ageTextMilestone;
   }
