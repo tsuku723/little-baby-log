@@ -329,7 +329,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
             value={title}
             onChangeText={(text) => setTitle(text.slice(0, 80))}
             placeholder="短いタイトル"
-            accessibilityLabel="タイトル"
+            accessibilityLabel="タイトル（必須）"
           />
           <TouchableOpacity
             style={styles.titleSuggestionButton}
