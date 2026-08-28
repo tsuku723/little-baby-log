@@ -323,13 +323,13 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* ヘッダーに文言を移したため、ここではタイトルを表示しない */}
 
         <View style={styles.field}>
-          <Text style={styles.label}>タイトル</Text>
+          <Text style={styles.label}>タイトル（必須）</Text>
           <TextInput
             style={styles.input}
             value={title}
             onChangeText={(text) => setTitle(text.slice(0, 80))}
-            placeholder="短いタイトル（任意）"
-            accessibilityLabel="タイトル"
+            placeholder="短いタイトル"
+            accessibilityLabel="タイトル（必須）"
           />
           <TouchableOpacity
             style={styles.titleSuggestionButton}
