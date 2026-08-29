@@ -2,7 +2,7 @@ import { NavigatorScreenParams } from "@react-navigation/native";
 
 // Navigation type definitions. Keep RootStack in sync with flow requirements.
 export type RootStackParamList = {
-  MainTabs: undefined;
+  MainTabs: NavigatorScreenParams<TabParamList> | undefined;
   RecordInput:
     | {
         recordId?: string; // edit-only

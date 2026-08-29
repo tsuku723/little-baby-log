@@ -98,7 +98,7 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           <TouchableOpacity
             style={styles.headerIconButton}
             onPress={() =>
-              (navigation as any).navigate("MainTabs", {
+              navigation.navigate("MainTabs", {
                 screen: "CalendarStack",
                 params: { screen: "Today", params: { isoDate: record.date } },
               })
