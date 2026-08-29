@@ -94,26 +94,46 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <AppText weight="medium" style={styles.headerTitle}>
           {user?.name ? `${user.name}の記録` : "記録"}
         </AppText>
-        <TouchableOpacity
-          style={styles.headerRight}
-          onPress={() =>
-            navigation.navigate("RecordInput", {
-              recordId: record.id,
-              isoDate: record.date,
-              from,
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel="編集"
-        >
-          <Text style={styles.headerEditText}>編集</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("RecordInput", {
+                recordId: record.id,
+                isoDate: record.date,
+                from,
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="編集"
+          >
+            <Text style={styles.headerEditText}>編集</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
+        <TouchableOpacity
+          style={styles.dateRow}
+          onPress={() =>
+            navigation.navigate("MainTabs", {
+              screen: "CalendarStack",
+              params: { screen: "Today", params: { isoDate: record.date } },
+            })
+          }
+          accessibilityRole="button"
+          accessibilityLabel="その日の記録をエクスポート"
+        >
+          <Text style={styles.dateText}>{record.date.replace(/-/g, "/")}</Text>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={COLORS.textSecondary}
+          />
+        </TouchableOpacity>
+
         <View style={styles.photoWrapper}>
           {photoPath ? (
             <Image
@@ -130,11 +150,6 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               />
             </View>
           )}
-          <View style={styles.dateOverlay}>
-            <Text style={styles.dateOverlayText}>
-              {record.date.replace(/-/g, "/")}
-            </Text>
-          </View>
         </View>
 
         <View style={styles.body}>
@@ -203,8 +218,9 @@ const styles = StyleSheet.create({
   headerRight: {
     position: "absolute",
     right: 16,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 16,
   },
   headerTitle: {
     fontSize: 18,
@@ -237,19 +253,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dateOverlay: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  dateOverlayText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontWeight: "500",
+  dateText: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
   },
   body: {
     padding: 20,
