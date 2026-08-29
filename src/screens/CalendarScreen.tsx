@@ -282,7 +282,12 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
               </Text>
             ))}
           </View>
-          <CalendarGrid days={monthView.days} onPressDay={handlePressDay} />
+          <CalendarGrid
+            days={monthView.days}
+            onPressDay={handlePressDay}
+            ageFormat={ageFormat}
+            birthDate={user?.birthDate ?? null}
+          />
           <Text style={styles.footer}>
             出産予定日前の修正月齢は在胎週数で表示しています。
           </Text>
@@ -381,12 +386,13 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    gap: 12,
   },
   weekRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 12,
+    marginTop: 6,
+    marginBottom: 2,
   },
   weekLabel: {
     flex: 1,
@@ -396,6 +402,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   footer: {
+    marginTop: 12,
     textAlign: "center",
     color: COLORS.textSecondary,
     fontSize: 12,
