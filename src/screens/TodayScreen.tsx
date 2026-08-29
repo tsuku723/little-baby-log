@@ -745,10 +745,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   hiddenRenderer: {
+    // opacity: 0 だとiOSのスナップショット処理で実効opacityが反映され、
+    // ImageBackground含む描画内容がキャプチャ時に透明になるため、画面外配置で非表示にする
     position: "absolute",
     top: 0,
-    left: 0,
-    opacity: 0,
+    left: -9999,
   },
   exportContainer: {
     width: EXPORT_CANVAS.WIDTH,
