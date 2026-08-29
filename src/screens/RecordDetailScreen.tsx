@@ -94,20 +94,38 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <AppText weight="medium" style={styles.headerTitle}>
           {user?.name ? `${user.name}の記録` : "記録"}
         </AppText>
-        <TouchableOpacity
-          style={styles.headerRight}
-          onPress={() =>
-            navigation.navigate("RecordInput", {
-              recordId: record.id,
-              isoDate: record.date,
-              from,
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel="編集"
-        >
-          <Text style={styles.headerEditText}>編集</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() =>
+              (navigation as any).navigate("MainTabs", {
+                screen: "CalendarStack",
+                params: { screen: "Today", params: { isoDate: record.date } },
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="その日の記録をエクスポート"
+          >
+            <Ionicons
+              name="image-outline"
+              size={20}
+              color={COLORS.textPrimary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("RecordInput", {
+                recordId: record.id,
+                isoDate: record.date,
+                from,
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="編集"
+          >
+            <Text style={styles.headerEditText}>編集</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -203,6 +221,11 @@ const styles = StyleSheet.create({
   headerRight: {
     position: "absolute",
     right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  headerIconButton: {
     alignItems: "center",
     justifyContent: "center",
   },
