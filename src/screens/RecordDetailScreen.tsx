@@ -96,23 +96,6 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         </AppText>
         <View style={styles.headerRight}>
           <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() =>
-              navigation.navigate("MainTabs", {
-                screen: "CalendarStack",
-                params: { screen: "Today", params: { isoDate: record.date } },
-              })
-            }
-            accessibilityRole="button"
-            accessibilityLabel="その日の記録をエクスポート"
-          >
-            <Ionicons
-              name="image-outline"
-              size={20}
-              color={COLORS.textPrimary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
             onPress={() =>
               navigation.navigate("RecordInput", {
                 recordId: record.id,
@@ -148,14 +131,29 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               />
             </View>
           )}
-          <View style={styles.dateOverlay}>
-            <Text style={styles.dateOverlayText}>
-              {record.date.replace(/-/g, "/")}
-            </Text>
-          </View>
         </View>
 
         <View style={styles.body}>
+          <TouchableOpacity
+            style={styles.dateRow}
+            onPress={() =>
+              navigation.navigate("MainTabs", {
+                screen: "CalendarStack",
+                params: { screen: "Today", params: { isoDate: record.date } },
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="その日の記録をエクスポート"
+          >
+            <Text style={styles.dateText}>
+              {record.date.replace(/-/g, "/")}
+            </Text>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={COLORS.textSecondary}
+            />
+          </TouchableOpacity>
           <Text style={styles.title}>{record.title || "(タイトル未入力)"}</Text>
 
           {ageInfo ? (
@@ -225,10 +223,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
   },
-  headerIconButton: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
   headerTitle: {
     fontSize: 18,
     color: COLORS.textPrimary,
@@ -260,19 +254,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dateOverlay: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  dateOverlayText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontWeight: "500",
+  dateText: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
   },
   body: {
     padding: 20,
