@@ -73,6 +73,12 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
     bottomTextStyle = styles.ageTextCorrected;
   }
 
+  if (bottomLabel == null && day.milestoneBadge) {
+    bottomLabel = day.milestoneBadge;
+    bottomStickerStyle = styles.ageStickerMilestone;
+    bottomTextStyle = styles.ageTextMilestone;
+  }
+
   const hasAchievements = day.achievementCount > 0;
   const borderStyle = {
     borderRightWidth: gridPos?.isLastCol ? 0 : HAIR,
@@ -248,6 +254,9 @@ const styles = StyleSheet.create({
   ageStickerGestational: {
     backgroundColor: COLORS.ageBadgeGestationalBg,
   },
+  ageStickerMilestone: {
+    backgroundColor: COLORS.ageBadgeMilestoneBg,
+  },
   ageTextChronological: {
     color: COLORS.ageBadgeText,
     fontSize: 10,
@@ -259,6 +268,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   ageTextGestational: {
+    color: COLORS.ageBadgeText,
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  ageTextMilestone: {
     color: COLORS.ageBadgeText,
     fontSize: 10,
     fontWeight: "600",

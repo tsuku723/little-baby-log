@@ -113,6 +113,8 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
           ageFormat: user?.settings.ageFormat ?? "md",
           showDaysSinceBirth: user?.settings.showDaysSinceBirth ?? true,
           lastViewedMonth: user?.settings.lastViewedMonth ?? null,
+          notifyMilestoneEnabled:
+            user?.settings.notifyMilestoneEnabled ?? false,
         },
         birthDate: user?.birthDate ?? null,
         dueDate: user?.dueDate ?? null,

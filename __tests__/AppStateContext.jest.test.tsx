@@ -1,6 +1,7 @@
 import React from "react";
 import { Text } from "react-native";
 import { act, render, waitFor } from "@testing-library/react-native";
+import * as Notifications from "expo-notifications";
 
 const mockGetItem = jest.fn();
 const mockSetItem = jest.fn();
@@ -925,5 +926,61 @@ describe("AppStateContext", () => {
     });
 
     expect(achievements).toEqual([]);
+  });
+
+  test("restoreState cancels notifications for removed users and syncs restored users", async () => {
+    mockGetItem.mockResolvedValueOnce(
+      JSON.stringify({
+        users: [
+          {
+            id: "old-user",
+            name: "Old",
+            birthDate: "2025-01-01",
+            dueDate: null,
+            settings: { ...settings, notifyMilestoneEnabled: true },
+            createdAt: "t",
+          },
+        ],
+        activeUserId: "old-user",
+        achievements: { "old-user": [] },
+      })
+    );
+
+    let captured: ReturnType<typeof useAppState> | null = null;
+    const Probe = () => {
+      captured = useAppState();
+      return <Text>ok</Text>;
+    };
+
+    render(
+      <AppStateProvider>
+        <Probe />
+      </AppStateProvider>
+    );
+    await waitFor(() => expect(captured?.loading).toBe(false));
+
+    (Notifications.getAllScheduledNotificationsAsync as jest.Mock)
+      .mockClear()
+      .mockResolvedValue([{ identifier: "milestone-old-user-days-100" }]);
+    (Notifications.cancelScheduledNotificationAsync as jest.Mock).mockClear();
+    (Notifications.scheduleNotificationAsync as jest.Mock).mockClear();
+
+    const newProfile = {
+      id: "new-user",
+      name: "New",
+      birthDate: "2025-06-01",
+      dueDate: null,
+      settings: { ...settings, notifyMilestoneEnabled: true },
+      createdAt: "t2",
+    };
+
+    await act(async () => {
+      await captured!.restoreState([newProfile], { "new-user": [] });
+    });
+
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(
+      "milestone-old-user-days-100"
+    );
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalled();
   });
 });

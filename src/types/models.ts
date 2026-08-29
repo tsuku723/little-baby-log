@@ -14,4 +14,5 @@ export const DEFAULT_SETTINGS: import("../models/dataModels").UserSettings = {
   ageFormat: "ymd",
   showDaysSinceBirth: true,
   lastViewedMonth: null,
+  notifyMilestoneEnabled: false,
 };

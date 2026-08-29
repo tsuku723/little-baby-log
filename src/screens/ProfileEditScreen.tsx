@@ -1,4 +1,10 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
   Image,
@@ -15,6 +21,7 @@ import {
 
 import { NavigationProp } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { v4 as uuid } from "uuid";
 
 import AppText from "@/components/AppText";
 import DatePickerModal from "@/components/DatePickerModal";
@@ -34,6 +41,11 @@ import {
   resolvePhotoPath,
 } from "@/utils/photo";
 import { logProfileCreated } from "@/services/analytics";
+import {
+  requestNotificationPermissionAsync,
+  scheduleMilestoneNotificationsForUserAsync,
+  cancelMilestoneNotificationsForUserAsync,
+} from "@/services/notificationService";
 
 type Props = NativeStackScreenProps<SettingsStackParamList, "ProfileEdit">;
 
@@ -91,8 +103,15 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
       ageFormat: "ymd",
       showDaysSinceBirth: true,
       lastViewedMonth: null,
+      notifyMilestoneEnabled: false,
     };
   });
+
+  // 通知許可リクエスト中にユーザーがトグルを再操作した場合、
+  // 古いリクエストの結果で上書きしないよう最新の意図を追跡する
+  const notificationToggleIntentRef = useRef(
+    draftSettings.notifyMilestoneEnabled
+  );
 
   const startOfLocalDay = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -143,6 +162,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         ageFormat: "ymd",
         showDaysSinceBirth: true,
         lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
       });
     }
   }, [existing]);
@@ -203,6 +223,8 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
+    const savedUserId = existing?.id ?? uuid();
+
     if (existing) {
       if (
         existing.profilePhotoPath &&
@@ -219,6 +241,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
       });
     } else {
       await addUser({
+        id: savedUserId,
         name,
         birthDate,
         dueDate,
@@ -226,6 +249,19 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         settings: draftSettings,
       });
       void logProfileCreated();
+    }
+
+    if (draftSettings.notifyMilestoneEnabled) {
+      void scheduleMilestoneNotificationsForUserAsync({
+        id: savedUserId,
+        name,
+        birthDate,
+        dueDate,
+        settings: draftSettings,
+        createdAt: existing?.createdAt ?? new Date().toISOString(),
+      });
+    } else {
+      void cancelMilestoneNotificationsForUserAsync(savedUserId);
     }
 
     returnToOriginTab();
@@ -267,6 +303,29 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
       }));
     }
     closeDatePicker();
+  };
+
+  const handleToggleMilestoneNotification = async (value: boolean) => {
+    notificationToggleIntentRef.current = value;
+
+    if (!value) {
+      setDraftSettings((prev) => ({ ...prev, notifyMilestoneEnabled: false }));
+      return;
+    }
+
+    const granted = await requestNotificationPermissionAsync();
+    // リクエスト中にユーザーがOFFへ切り替えていた場合、古い結果で上書きしない
+    if (notificationToggleIntentRef.current !== true) return;
+
+    if (!granted) {
+      Alert.alert(
+        "通知が許可されていません",
+        "設定アプリから通知を許可すると、マイルストーン通知を受け取れます。"
+      );
+      return;
+    }
+
+    setDraftSettings((prev) => ({ ...prev, notifyMilestoneEnabled: true }));
   };
 
   const handleDelete = async () => {
@@ -473,6 +532,24 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
                     ...prev,
                     showDaysSinceBirth: value,
                   }))
+                }
+              />
+            </View>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>マイルストーン通知</Text>
+            <Text style={styles.description}>
+              100日目・200日目・1歳・1000日目や、月齢が変わる日（2歳頃まで）に通知します。
+            </Text>
+            <View style={styles.switchRow}>
+              <Text style={styles.optionLabel}>
+                {draftSettings.notifyMilestoneEnabled ? "ON" : "OFF"}
+              </Text>
+              <Switch
+                value={draftSettings.notifyMilestoneEnabled}
+                onValueChange={(value) =>
+                  void handleToggleMilestoneNotification(value)
                 }
               />
             </View>

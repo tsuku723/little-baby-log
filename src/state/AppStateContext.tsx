@@ -16,12 +16,17 @@ import {
   loadUserSettings,
 } from "@/storage/storage";
 import { toRelativePhotoPath } from "@/utils/photo";
+import {
+  cancelMilestoneNotificationsForUserAsync,
+  syncMilestoneNotificationsAsync,
+} from "@/services/notificationService";
 
 export type UserSettings = {
   showCorrectedUntilMonths: number | null;
   ageFormat: "md" | "ymd";
   showDaysSinceBirth: boolean;
   lastViewedMonth: string | null;
+  notifyMilestoneEnabled: boolean;
 };
 
 export type UserProfile = {
@@ -135,6 +140,15 @@ const ensureStateIntegrity = (state: AppState): AppState => {
       nextState.achievements[user.id].map(normalizeAchievement);
   });
 
+  // 旧バージョンのデータには notifyMilestoneEnabled が存在しないため補完する
+  nextState.users = nextState.users.map((user) => ({
+    ...user,
+    settings: {
+      ...user.settings,
+      notifyMilestoneEnabled: user.settings?.notifyMilestoneEnabled ?? false,
+    },
+  }));
+
   return nextState;
 };
 
@@ -167,6 +181,7 @@ const migrateLegacyState = async (): Promise<AppState | null> => {
       ageFormat: legacySettings?.ageFormat ?? "ymd",
       showDaysSinceBirth: legacySettings?.showDaysSinceBirth ?? true,
       lastViewedMonth: legacySettings?.lastViewedMonth ?? null,
+      notifyMilestoneEnabled: false,
     },
     createdAt: now,
   };
@@ -273,6 +288,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
       const loaded = await loadAppState();
       setState(loaded);
       setLoading(false);
+      void syncMilestoneNotificationsAsync(loaded.users);
     };
     void bootstrap();
   }, []);
@@ -347,6 +363,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const deleteUser = useCallback(
     async (userId: string) => {
+      void cancelMilestoneNotificationsForUserAsync(userId);
       await updateState((prev) => {
         const nextUsers = prev.users.filter((user) => user.id !== userId);
         const nextAchievements = { ...prev.achievements };
@@ -428,15 +445,26 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
       profiles: UserProfile[],
       achievements: Record<string, Achievement[]>
     ) => {
+      const previousUserIds = state.users.map((u) => u.id);
       const nextState = ensureStateIntegrity({
         users: profiles,
         activeUserId: profiles[0]?.id ?? null,
         achievements,
       });
+
       setState(nextState);
       await persistState(nextState);
+
+      const nextUserIds = new Set(nextState.users.map((u) => u.id));
+      const removedUserIds = previousUserIds.filter(
+        (id) => !nextUserIds.has(id)
+      );
+      await Promise.all(
+        removedUserIds.map((id) => cancelMilestoneNotificationsForUserAsync(id))
+      );
+      void syncMilestoneNotificationsAsync(nextState.users);
     },
-    []
+    [state]
   );
 
   const value = useMemo(
