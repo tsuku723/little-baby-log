@@ -3,7 +3,10 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { CalendarDay } from "@/models/dataModels";
 import { COLORS } from "@/constants/colors";
-import { normalizeAgeLabelText, stripChronologicalPrefix } from "@/utils/ageLabelNormalization";
+import {
+  normalizeAgeLabelText,
+  stripChronologicalPrefix,
+} from "@/utils/ageLabelNormalization";
 
 interface Props {
   day: CalendarDay;
@@ -16,7 +19,7 @@ interface Props {
   };
 }
 
-const CELL_HEIGHT = 80;
+const CELL_HEIGHT = 64;
 const HAIR = StyleSheet.hairlineWidth;
 
 const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
@@ -29,7 +32,8 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
   const correctedLabel = day.calendarAgeLabel?.corrected ?? null;
   const gestationalLabel = day.calendarAgeLabel?.gestational ?? null;
 
-  const normalizedChronologicalLabel = normalizeAgeLabelText(chronologicalLabel);
+  const normalizedChronologicalLabel =
+    normalizeAgeLabelText(chronologicalLabel);
   const normalizedCorrectedLabel = normalizeAgeLabelText(correctedLabel);
   const normalizedGestationalLabel = normalizeAgeLabelText(gestationalLabel);
 
@@ -40,7 +44,10 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
   let bottomStickerStyle = styles.ageStickerChronological;
   let bottomTextStyle = styles.ageTextChronological;
 
-  if (normalizedGestationalLabel != null && normalizedChronologicalLabel != null) {
+  if (
+    normalizedGestationalLabel != null &&
+    normalizedChronologicalLabel != null
+  ) {
     // 誕生日かつ在胎表示期間：「誕生日」を上、在胎週数を下に表示する。
     bottomLabel = normalizedGestationalLabel;
     bottomStickerStyle = styles.ageStickerGestational;
@@ -82,7 +89,13 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
     const normalizedText = normalizeAgeLabelText(text);
     const shouldDim = normalizedText != null && baseStyle !== styles.hidden;
     const label = (
-      <Text style={[baseStyle, textColorStyle, shouldDim && isDimmed && styles.ageDimmed]}>
+      <Text
+        style={[
+          baseStyle,
+          textColorStyle,
+          shouldDim && isDimmed && styles.ageDimmed,
+        ]}
+      >
         {normalizedText != null ? String(normalizedText) : " "}
       </Text>
     );
@@ -122,13 +135,33 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
       <View style={styles.contentArea}>
         {day.isCurrentMonth ? (
           <>
-            {renderAgeLine(topLabel, topLabel != null ? styles.age : styles.hidden, topStickerStyle, topTextStyle)}
-            {renderAgeLine(bottomLabel, bottomLabel != null ? styles.ageWeak : styles.hidden, bottomStickerStyle, bottomTextStyle)}
+            {renderAgeLine(
+              topLabel,
+              topLabel != null ? styles.age : styles.hidden,
+              topStickerStyle,
+              topTextStyle
+            )}
+            {renderAgeLine(
+              bottomLabel,
+              bottomLabel != null ? styles.ageWeak : styles.hidden,
+              bottomStickerStyle,
+              bottomTextStyle
+            )}
           </>
         ) : (
           <>
-            {renderAgeLine(null, styles.hidden, styles.ageStickerChronological, styles.ageTextChronological)}
-            {renderAgeLine(null, styles.hidden, styles.ageStickerChronological, styles.ageTextChronological)}
+            {renderAgeLine(
+              null,
+              styles.hidden,
+              styles.ageStickerChronological,
+              styles.ageTextChronological
+            )}
+            {renderAgeLine(
+              null,
+              styles.hidden,
+              styles.ageStickerChronological,
+              styles.ageTextChronological
+            )}
           </>
         )}
       </View>
