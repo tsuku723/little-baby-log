@@ -48,6 +48,9 @@ yarn-error.*
 # test coverage reports
 coverage/
 
+# scripts/run-age-tests.mjs が生成するビルド成果物
+.tmp-test/
+
 # Claude Code local settings
 .claude/
 

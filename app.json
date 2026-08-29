@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "studio.teeda.littlebabylog",
-      "buildNumber": "23",
+      "buildNumber": "25",
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ja_JP",
@@ -65,6 +65,13 @@
         }
       ],
       "expo-tracking-transparency",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F2A48A"
+        }
+      ],
       [
         "react-native-google-mobile-ads",
         {

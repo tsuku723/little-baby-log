@@ -11,6 +11,7 @@ export type UserSettings = {
   ageFormat: AgeFormat;
   showDaysSinceBirth: boolean;
   lastViewedMonth: string | null; // "YYYY-MM-DD"
+  notifyMilestoneEnabled: boolean;
 };
 
 // ---------------------------------------
@@ -19,15 +20,15 @@ export type UserSettings = {
 
 export type Achievement = {
   id: string;
-  date: string;        // normalized ISO "YYYY-MM-DD"
-  category?: string;   // 現在未使用。将来のタグ機能用予約フィールド。
+  date: string; // normalized ISO "YYYY-MM-DD"
+  category?: string; // 現在未使用。将来のタグ機能用予約フィールド。
   title: string;
   memo?: string;
-  photoPath?: string;  // アプリ内に保存した JPEG のファイルパス
+  photoPath?: string; // アプリ内に保存した JPEG のファイルパス
 
   // storage.ts に合わせて「必須」に統一
-  createdAt: string;   // ISO datetime
-  updatedAt: string;   // ISO datetime（optional ではない）
+  createdAt: string; // ISO datetime
+  updatedAt: string; // ISO datetime（optional ではない）
 };
 
 // ---------------------------------------
@@ -96,7 +97,7 @@ export type AgeInfo = {
 // ---------------------------------------
 
 export type CalendarDay = {
-  date: string;              // "YYYY-MM-DD"
+  date: string; // "YYYY-MM-DD"
   isCurrentMonth: boolean;
   isToday: boolean;
   ageInfo: AgeInfo | null;
@@ -110,6 +111,9 @@ export type CalendarDay = {
 
   // 永続化は配列のため hasAchievements は boolean のままでOK
   hasAchievements: boolean;
+
+  // 100/200/365/1000日目のマイルストームバッジ（例:"100日","1歳"）。対象外の日は null。
+  milestoneBadge: string | null;
 };
 
 export type CalendarMonthView = {
@@ -124,7 +128,7 @@ export type CalendarMonthView = {
 
 export type AchievementListItem = {
   id: string;
-  date: string;      // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   dateLabel: string;
   title: string;
 };

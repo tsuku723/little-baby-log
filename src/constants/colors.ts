@@ -33,6 +33,7 @@ export const COLORS = {
   ageBadgeChronologicalBg: "#8BBBA5",
   ageBadgeCorrectedBg: "#F2A48A",
   ageBadgeGestationalBg: "#F2A48A",
+  ageBadgeMilestoneBg: "#F6C1CC",
   ageBadgeText: "#FFFFFF",
 
   // Weekdays
