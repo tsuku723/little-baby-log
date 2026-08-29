@@ -19,7 +19,7 @@ interface Props {
   };
 }
 
-const CELL_HEIGHT = 80;
+const CELL_HEIGHT = 64;
 const HAIR = StyleSheet.hairlineWidth;
 
 const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {

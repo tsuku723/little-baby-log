@@ -134,12 +134,12 @@ const formatAge = (parts: AgeParts, ageFormat: AgeFormat): string => {
   return `${parts.years}才${parts.months}ヶ月${parts.days}日`;
 };
 
-const totalMonthsFromParts = (parts: {
+export const totalMonthsFromParts = (parts: {
   years: number;
   months: number;
 }): number => parts.years * 12 + parts.months;
 
-const toYearMonthFromTotalMonths = (
+export const toYearMonthFromTotalMonths = (
   totalMonths: number
 ): { years: number; months: number } => ({
   years: Math.floor(totalMonths / 12),
