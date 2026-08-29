@@ -76,6 +76,7 @@ jest.mock("@/components/AppText", () => {
 
 const mockStackNavigation = {
   popToTop: jest.fn(),
+  reset: jest.fn(),
   getParent: jest.fn().mockReturnValue({ setOptions: jest.fn() }),
 };
 const mockRoute = { params: { isoDate: "2024-06-01" } };
@@ -158,6 +159,42 @@ describe("TodayScreen UI (TS-UI-004)", () => {
     const json = JSON.stringify(tree.toJSON());
     expect(json).toContain("2024/06/01(土)の記録");
     expect(json).toContain("気づいたことがあれば記録しよう");
+  });
+
+  test("ヘッダーのカレンダーアイコンをタップするとCalendarへreset遷移する（Issue #262）", async () => {
+    mockActiveUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd",
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+      },
+    };
+    const TodayScreen = require("../src/screens/TodayScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(TodayScreen, {
+          navigation: mockStackNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const calendarButton = tree.root.findByProps({
+      accessibilityLabel: "カレンダーへ戻る",
+    });
+    act(() => {
+      calendarButton.props.onPress();
+    });
+    expect(mockStackNavigation.reset).toHaveBeenCalledWith({
+      index: 0,
+      routes: [{ name: "Calendar" }],
+    });
+    expect(mockStackNavigation.popToTop).not.toHaveBeenCalled();
   });
 
   test("記録あり: 記録カードを表示", async () => {
