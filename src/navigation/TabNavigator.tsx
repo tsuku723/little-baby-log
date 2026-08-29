@@ -1,6 +1,9 @@
 import React from "react";
 
-import { BottomTabBar, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import {
+  BottomTabBar,
+  createBottomTabNavigator,
+} from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { View } from "react-native";
@@ -32,15 +35,24 @@ const RecordListStack = createNativeStackNavigator<RecordListStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
 const CalendarStackNavigator: React.FC = () => (
-  <CalendarStack.Navigator initialRouteName="Calendar" screenOptions={{ headerShown: false }}>
+  <CalendarStack.Navigator
+    initialRouteName="Calendar"
+    screenOptions={{ headerShown: false }}
+  >
     <CalendarStack.Screen name="Calendar" component={CalendarScreen} />
     <CalendarStack.Screen name="Today" component={TodayScreen} />
   </CalendarStack.Navigator>
 );
 
 const RecordListStackNavigator: React.FC = () => (
-  <RecordListStack.Navigator initialRouteName="AchievementList" screenOptions={{ headerShown: false }}>
-    <RecordListStack.Screen name="AchievementList" component={AchievementListScreen} />
+  <RecordListStack.Navigator
+    initialRouteName="AchievementList"
+    screenOptions={{ headerShown: false }}
+  >
+    <RecordListStack.Screen
+      name="AchievementList"
+      component={AchievementListScreen}
+    />
   </RecordListStack.Navigator>
 );
 
@@ -65,11 +77,20 @@ const SettingsStackNavigator: React.FC = () => (
   >
     <SettingsStack.Screen name="Settings" component={SettingsScreen} />
     <SettingsStack.Screen name="ProfileEdit" component={ProfileEditScreen} />
-    <SettingsStack.Screen name="ProfileManager" component={ProfileManagerScreen} />
+    <SettingsStack.Screen
+      name="ProfileManager"
+      component={ProfileManagerScreen}
+    />
     <SettingsStack.Screen name="About" component={AboutScreen} />
-    <SettingsStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+    <SettingsStack.Screen
+      name="PrivacyPolicy"
+      component={PrivacyPolicyScreen}
+    />
     <SettingsStack.Screen name="Terms" component={TermsScreen} />
-    <SettingsStack.Screen name="OpenSourceLicenses" component={OpenSourceLicensesScreen} />
+    <SettingsStack.Screen
+      name="OpenSourceLicenses"
+      component={OpenSourceLicensesScreen}
+    />
     <SettingsStack.Screen name="Contact" component={ContactScreen} />
   </SettingsStack.Navigator>
 );
@@ -101,15 +122,27 @@ const TabNavigator: React.FC = () => {
         component={CalendarStackNavigator}
         options={{
           tabBarLabel: "カレンダー",
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" color={color} size={size} />
+          ),
         }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => {
+            if (navigation.isFocused()) {
+              e.preventDefault();
+              navigation.navigate(route.name, { screen: "Calendar" });
+            }
+          },
+        })}
       />
       <Tab.Screen
         name="RecordListStack"
         component={RecordListStackNavigator}
         options={{
           tabBarLabel: "記録一覧",
-          tabBarIcon: ({ color, size }) => <Ionicons name="list-outline" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list-outline" color={color} size={size} />
+          ),
         }}
       />
       <Tab.Screen
@@ -117,7 +150,9 @@ const TabNavigator: React.FC = () => {
         component={SettingsStackNavigator}
         options={{
           tabBarLabel: "設定",
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" color={color} size={size} />
+          ),
         }}
       />
     </Tab.Navigator>

@@ -115,6 +115,25 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
+        <TouchableOpacity
+          style={styles.dateRow}
+          onPress={() =>
+            navigation.navigate("MainTabs", {
+              screen: "CalendarStack",
+              params: { screen: "Today", params: { isoDate: record.date } },
+            })
+          }
+          accessibilityRole="button"
+          accessibilityLabel="その日の記録をエクスポート"
+        >
+          <Text style={styles.dateText}>{record.date.replace(/-/g, "/")}</Text>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={COLORS.textSecondary}
+          />
+        </TouchableOpacity>
+
         <View style={styles.photoWrapper}>
           {photoPath ? (
             <Image
@@ -134,26 +153,6 @@ const RecordDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
 
         <View style={styles.body}>
-          <TouchableOpacity
-            style={styles.dateRow}
-            onPress={() =>
-              navigation.navigate("MainTabs", {
-                screen: "CalendarStack",
-                params: { screen: "Today", params: { isoDate: record.date } },
-              })
-            }
-            accessibilityRole="button"
-            accessibilityLabel="その日の記録をエクスポート"
-          >
-            <Text style={styles.dateText}>
-              {record.date.replace(/-/g, "/")}
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={COLORS.textSecondary}
-            />
-          </TouchableOpacity>
           <Text style={styles.title}>{record.title || "(タイトル未入力)"}</Text>
 
           {ageInfo ? (
@@ -258,6 +257,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   dateText: {
     fontSize: 20,
