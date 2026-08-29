@@ -18,6 +18,9 @@ const totalMonthsForDay = (
   day: CalendarDay,
   birthDate: string | null
 ): number | null => {
+  // 前月/翌月のパディング日はDayCell側で月齢表示を隠しているため、
+  // 週帯の計算からも除外する（隣接月の日が帯を支配しないように）。
+  if (!day.isCurrentMonth) return null;
   if (!day.ageInfo) return null;
   if (birthDate && day.date < birthDate) return null;
   return totalMonthsFromParts(day.ageInfo.chronological);

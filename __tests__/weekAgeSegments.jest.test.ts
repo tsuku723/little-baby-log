@@ -7,9 +7,13 @@ const settings = {
   ageFormat: "ymd" as const,
 };
 
-const makeDay = (iso: string, birthDate: string): CalendarDay => ({
+const makeDay = (
+  iso: string,
+  birthDate: string,
+  isCurrentMonth = true
+): CalendarDay => ({
   date: iso,
-  isCurrentMonth: true,
+  isCurrentMonth,
   isToday: false,
   ageInfo: calculateAgeInfo({
     targetDate: iso,
@@ -121,6 +125,33 @@ describe("buildWeekAgeSegments", () => {
 
     expect(segments).not.toBeNull();
     expect(segments!.some((s) => s.label != null)).toBe(true);
+  });
+
+  test("前月/翌月のパディング日（isCurrentMonth: false）は週帯の計算対象から除外される", () => {
+    // 8月画面の最初の週：7/26〜7/31は前月のパディング日、8/1のみ当月。
+    // 誕生日を7/15にして、パディング日も当月日も同じ月齢になるようにする。
+    const birthDate = "2026-07-15";
+    const paddingDays = [
+      "2026-07-26",
+      "2026-07-27",
+      "2026-07-28",
+      "2026-07-29",
+      "2026-07-30",
+      "2026-07-31",
+    ].map((d) => makeDay(d, birthDate, false));
+    const currentMonthDay = makeDay("2026-08-01", birthDate, true);
+    const row = [...paddingDays, currentMonthDay];
+
+    const segments = buildWeekAgeSegments(row, "ymd", birthDate);
+
+    expect(segments).not.toBeNull();
+    // パディング日6日分は空白セグメントにまとめられ、当月の1日だけが有効なセグメントになる
+    const blank = segments!.find((s) => s.totalMonths == null);
+    expect(blank).toBeDefined();
+    expect(blank!.dayCount).toBe(6);
+    const withLabel = segments!.filter((s) => s.label != null);
+    expect(withLabel).toHaveLength(1);
+    expect(withLabel[0].dayCount).toBe(1);
   });
 
   test("全日が誕生日以降ならnullにならない", () => {
