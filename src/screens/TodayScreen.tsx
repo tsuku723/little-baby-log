@@ -11,7 +11,6 @@ import React, {
 import {
   Alert,
   Image,
-  ImageBackground,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -485,12 +484,12 @@ const TodayScreen: React.FC<Props> = ({
           style={styles.exportContainer}
         >
           <View style={styles.exportContent} collapsable={false}>
-            <ImageBackground
-              source={EXPORT_BACKGROUND_IMAGE}
-              style={styles.exportBackground}
-              imageStyle={styles.exportBackgroundImage}
-              resizeMode="contain"
-            >
+            <View style={styles.exportBackground}>
+              <Image
+                source={EXPORT_BACKGROUND_IMAGE}
+                style={styles.exportBackgroundImage}
+                resizeMode="contain"
+              />
               <View style={styles.exportPhotoFrame}>
                 {latestPhotoPath ? (
                   <Image
@@ -559,7 +558,7 @@ const TodayScreen: React.FC<Props> = ({
                   </Text>
                 ))}
               </View>
-            </ImageBackground>
+            </View>
           </View>
         </ViewShot>
       </View>
@@ -745,11 +744,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   hiddenRenderer: {
-    // opacity: 0 だとiOSのスナップショット処理で実効opacityが反映され、
-    // ImageBackground含む描画内容がキャプチャ時に透明になるため、画面外配置で非表示にする
     position: "absolute",
     top: 0,
-    left: -9999,
+    left: 0,
+    opacity: 0,
   },
   exportContainer: {
     width: EXPORT_CANVAS.WIDTH,
