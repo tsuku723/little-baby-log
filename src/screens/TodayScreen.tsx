@@ -122,6 +122,21 @@ const EXPORT_AGE_BLOCK_TOP = 980;
 const EXPORT_RECORD_CARD = { LEFT: 114, RIGHT: 114, TOP: 1140 } as const;
 const EXPORT_DATE_BLOCK_TOP = 50;
 
+const EXPORT_IMAGE_READY_TIMEOUT_MS = 3000;
+const EXPORT_IMAGE_READY_POLL_INTERVAL_MS = 50;
+
+const waitUntil = async (
+  condition: () => boolean,
+  timeoutMs = EXPORT_IMAGE_READY_TIMEOUT_MS
+) => {
+  const startedAt = Date.now();
+  while (!condition() && Date.now() - startedAt < timeoutMs) {
+    await new Promise((resolve) =>
+      setTimeout(resolve, EXPORT_IMAGE_READY_POLL_INTERVAL_MS)
+    );
+  }
+};
+
 const TodayScreen: React.FC<Props> = ({
   navigation: stackNavigation,
   route,
@@ -138,6 +153,8 @@ const TodayScreen: React.FC<Props> = ({
   const { selectedDate, selectDateFromCalendar } = useDateViewContext();
   const viewShotRef = useRef<ViewShot | null>(null);
   const [latestPhotoPath, setLatestPhotoPath] = useState<string | null>(null);
+  const exportBackgroundLoadedRef = useRef(false);
+  const exportDecorationLoadedRef = useRef(false);
 
   const shouldHideTabBar = !user || !user.birthDate;
 
@@ -293,8 +310,13 @@ const TodayScreen: React.FC<Props> = ({
       }
 
       // Expo Go等の開発環境ではrequire()画像がMetro経由で遅延取得されるため、
-      // キャプチャ前に読み込み完了を保証する
+      // キャプチャ前に読み込み完了を保証する。Asset.loadAsyncはファイルの
+      // ダウンロードのみ保証するため、<Image>側の描画完了(onLoadEnd)も待つ
       await Asset.loadAsync([EXPORT_BACKGROUND_IMAGE, EXPORT_DECORATION_IMAGE]);
+      await waitUntil(
+        () =>
+          exportBackgroundLoadedRef.current && exportDecorationLoadedRef.current
+      );
 
       const uri = await viewShotRef.current?.capture?.();
       if (!uri) {
@@ -494,6 +516,9 @@ const TodayScreen: React.FC<Props> = ({
                 source={EXPORT_BACKGROUND_IMAGE}
                 style={styles.exportBackgroundImage}
                 resizeMode="contain"
+                onLoadEnd={() => {
+                  exportBackgroundLoadedRef.current = true;
+                }}
               />
               <View style={styles.exportPhotoFrame}>
                 {latestPhotoPath ? (
@@ -511,6 +536,9 @@ const TodayScreen: React.FC<Props> = ({
                   source={EXPORT_DECORATION_IMAGE}
                   style={styles.exportDecorationImage}
                   resizeMode="contain"
+                  onLoadEnd={() => {
+                    exportDecorationLoadedRef.current = true;
+                  }}
                 />
               </View>
               <View style={styles.exportDateBlock}>
