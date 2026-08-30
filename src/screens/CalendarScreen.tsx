@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -51,7 +50,6 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
     }, [])
   );
   const rootNavigation = useNavigation<RootNavigation>();
-  const insets = useSafeAreaInsets();
   const user = useActiveUser();
   const { updateUser } = useAppState();
   const { monthCounts, loadMonth } = useAchievements();
@@ -212,7 +210,7 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.backgroundTop} />
         <View style={styles.backgroundBottom} />
       </View>
-      <CalendarDecorations topOffset={insets.top} />
+      <CalendarDecorations />
       <View style={styles.fixedHeader}>
         {user ? (
           <UserAvatar
@@ -341,7 +339,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: COLORS.headerBackground,
+    // CalendarDecorations（バルーン/クローバー）が背後から透けて見えるよう半透明にしている
+    backgroundColor: "rgba(191, 220, 207, 0.92)",
     gap: 12,
   },
   headerInfo: {
