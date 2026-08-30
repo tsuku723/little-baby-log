@@ -22,6 +22,7 @@ const MonthHeader: React.FC<Props> = ({
   <View style={styles.container}>
     <TouchableOpacity
       accessibilityRole="button"
+      accessibilityLabel="前月へ"
       onPress={onPrev}
       style={styles.navButton}
     >
@@ -42,6 +43,7 @@ const MonthHeader: React.FC<Props> = ({
     <View style={styles.rightActions}>
       <TouchableOpacity
         accessibilityRole="button"
+        accessibilityLabel="次月へ"
         onPress={onNext}
         style={styles.navButton}
       >
