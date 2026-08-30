@@ -103,6 +103,8 @@ const AchievementListScreen: React.FC<Props> = () => {
     setPickerValue(getPickerDate(target === "from" ? fromDate : toDate, today));
   };
 
+  const isRangeFilterActive = Boolean(fromDate || toDate);
+
   const items = useMemo(() => {
     const allList: Achievement[] = Object.values(store).flat();
     const normalizedQuery = normalizeSearchText(searchText);
@@ -371,15 +373,23 @@ const AchievementListScreen: React.FC<Props> = () => {
             accessibilityLabel="フリーワード検索"
           />
           <TouchableOpacity
+            style={styles.filterToggle}
             onPress={() => setFilterExpanded((prev) => !prev)}
             accessibilityRole="button"
-            accessibilityLabel="絞り込みを切り替える"
+            accessibilityLabel={
+              isRangeFilterActive
+                ? "絞り込みを切り替える（期間で絞り込み中）"
+                : "絞り込みを切り替える"
+            }
           >
             <Ionicons
               name="options-outline"
               size={20}
-              color={COLORS.textSecondary}
+              color={
+                isRangeFilterActive ? COLORS.accentMain : COLORS.textSecondary
+              }
             />
+            {isRangeFilterActive ? <View style={styles.filterBadge} /> : null}
           </TouchableOpacity>
         </View>
         {isFilterExpanded ? (
@@ -544,6 +554,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     fontSize: 15,
     color: COLORS.textPrimary,
+  },
+  filterToggle: {
+    padding: 2,
+  },
+  filterBadge: {
+    position: "absolute",
+    top: -1,
+    right: -1,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.accentMain,
   },
   filterPanel: {
     gap: 6,
