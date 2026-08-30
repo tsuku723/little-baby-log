@@ -1,5 +1,6 @@
 ﻿import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { COLORS } from "@/constants/colors";
 
@@ -19,11 +20,19 @@ const MonthHeader: React.FC<Props> = ({
   onPressMonthLabel,
 }) => (
   <View style={styles.container}>
-    <TouchableOpacity accessibilityRole="button" onPress={onPrev} style={styles.navButton}>
-      <Text style={styles.navLabel}>{"<"}</Text>
+    <TouchableOpacity
+      accessibilityRole="button"
+      onPress={onPrev}
+      style={styles.navButton}
+    >
+      <Ionicons name="chevron-back" size={22} color={COLORS.accentMain} />
     </TouchableOpacity>
     <View style={styles.center}>
-      <TouchableOpacity accessibilityRole="button" onPress={onPressMonthLabel} style={styles.monthButton}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        onPress={onPressMonthLabel}
+        style={styles.monthButton}
+      >
         <Text style={styles.month}>{monthLabel}</Text>
       </TouchableOpacity>
       <TouchableOpacity accessibilityRole="button" onPress={onToday}>
@@ -31,8 +40,12 @@ const MonthHeader: React.FC<Props> = ({
       </TouchableOpacity>
     </View>
     <View style={styles.rightActions}>
-      <TouchableOpacity accessibilityRole="button" onPress={onNext} style={styles.navButton}>
-        <Text style={styles.navLabel}>{">"}</Text>
+      <TouchableOpacity
+        accessibilityRole="button"
+        onPress={onNext}
+        style={styles.navButton}
+      >
+        <Ionicons name="chevron-forward" size={22} color={COLORS.accentMain} />
       </TouchableOpacity>
     </View>
   </View>
@@ -49,11 +62,6 @@ const styles = StyleSheet.create({
   navButton: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-  },
-  navLabel: {
-    fontSize: 20,
-    color: COLORS.accentMain,
-    fontWeight: "600",
   },
   center: {
     alignItems: "center",
