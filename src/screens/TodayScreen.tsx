@@ -294,8 +294,10 @@ const TodayScreen: React.FC<Props> = ({
   }, [sortedAchievements]);
 
   const handleOpenCalendar = () => {
-    // Today が CalendarStack 内にいる前提：カレンダー（スタック先頭）に戻す
-    stackNavigation.popToTop();
+    // popToTop はスタックに Calendar が残っていない場合に無効化する。
+    // navigate だとスタックが [Today] のみの状態から [Today, Calendar] という
+    // 非正規の順序になってしまうため、reset で必ず [Calendar] 単独の状態にする。
+    stackNavigation.reset({ index: 0, routes: [{ name: "Calendar" }] });
   };
 
   const handleSaveImage = async () => {
