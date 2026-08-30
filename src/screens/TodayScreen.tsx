@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 
+import { Asset } from "expo-asset";
 import * as MediaLibrary from "expo-media-library";
 import ViewShot from "react-native-view-shot";
 
@@ -290,6 +291,10 @@ const TodayScreen: React.FC<Props> = ({
         );
         return;
       }
+
+      // Expo Go等の開発環境ではrequire()画像がMetro経由で遅延取得されるため、
+      // キャプチャ前に読み込み完了を保証する
+      await Asset.loadAsync([EXPORT_BACKGROUND_IMAGE, EXPORT_DECORATION_IMAGE]);
 
       const uri = await viewShotRef.current?.capture?.();
       if (!uri) {
