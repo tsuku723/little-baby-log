@@ -1,0 +1,40 @@
+name: EAS Update (branch OTA)
+
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Publish EAS Update
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Publish update to branch
+        run: eas update --branch "${{ github.ref_name }}" --message "${{ github.ref_name }} @ ${{ github.sha }}" --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GOOGLE_SERVICES_IOS_BASE64: ${{ secrets.GOOGLE_SERVICES_IOS_BASE64 }}
+
+      - name: Link channel to this branch (only needed on first publish)
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          if ! eas channel:view "$BRANCH" --non-interactive --json > /dev/null 2>&1; then
+            eas channel:create "$BRANCH" --non-interactive
+            eas channel:edit "$BRANCH" --branch "$BRANCH" --non-interactive
+          fi
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

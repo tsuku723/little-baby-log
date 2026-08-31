@@ -17,10 +17,18 @@ module.exports = ({ config }) => {
     googleServicesFile = plistPath;
   }
 
+  // 開発ビルド(EASの"development"プロファイル)はTestFlight版と同一端末に共存できるよう
+  // bundleIdentifier/アプリ名を分ける
+  const isDevelopmentBuild = process.env.EAS_BUILD_PROFILE === "development";
+
   return {
     ...config,
+    name: isDevelopmentBuild ? `${config.name}(Dev)` : config.name,
     ios: {
       ...config.ios,
+      bundleIdentifier: isDevelopmentBuild
+        ? "studio.teeda.littlebabylog.dev"
+        : config.ios?.bundleIdentifier,
       googleServicesFile,
     },
   };
