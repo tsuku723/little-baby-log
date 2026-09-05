@@ -18,12 +18,15 @@ module.exports = ({ config }) => {
   }
 
   // 開発ビルド(EASの"development"プロファイル)はTestFlight版と同一端末に共存できるよう
-  // bundleIdentifier/アプリ名を分ける
+  // bundleIdentifierを分ける。
+  // 注意: nameは変更しないこと。name(「リトルベビーログ」)はASCII文字を含まないため
+  // prebuild時のXcodeターゲット名サニタイズでは空文字→デフォルトの"app"にフォールバックしている。
+  // 末尾にASCII文字(例: "(Dev)")を付けるとターゲット名がそちらから生成されてしまい、
+  // 証明書側が前提とする"app"というターゲット名と食い違ってビルドが失敗する。
   const isDevelopmentBuild = process.env.EAS_BUILD_PROFILE === "development";
 
   return {
     ...config,
-    name: isDevelopmentBuild ? `${config.name}(Dev)` : config.name,
     ios: {
       ...config.ios,
       bundleIdentifier: isDevelopmentBuild
