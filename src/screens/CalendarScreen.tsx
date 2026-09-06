@@ -12,7 +12,6 @@ import { NavigationProp, useNavigation } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import CalendarGrid from "@/components/CalendarGrid";
-import CalendarDecorations from "@/components/CalendarDecorations";
 import DatePickerModal from "@/components/DatePickerModal";
 import MonthHeader from "@/components/MonthHeader";
 import AppText from "@/components/AppText";
@@ -210,7 +209,6 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.backgroundTop} />
         <View style={styles.backgroundBottom} />
       </View>
-      <CalendarDecorations />
       <View style={styles.fixedHeader}>
         {user ? (
           <UserAvatar
@@ -339,7 +337,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    // CalendarDecorations（バルーン/クローバー）が背後から透けて見えるよう半透明にしている
     backgroundColor: "rgba(191, 220, 207, 0.92)",
     gap: 12,
   },

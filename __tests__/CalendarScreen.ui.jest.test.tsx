@@ -43,11 +43,6 @@ jest.mock("@/components/CalendarGrid", () => ({
   default: () => null,
 }));
 
-jest.mock("@/components/CalendarDecorations", () => ({
-  __esModule: true,
-  default: () => null,
-}));
-
 jest.mock("@/components/DatePickerModal", () => ({
   __esModule: true,
   default: () => null,
