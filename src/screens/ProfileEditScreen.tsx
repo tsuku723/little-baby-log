@@ -25,6 +25,7 @@ import { v4 as uuid } from "uuid";
 
 import AppText from "@/components/AppText";
 import DatePickerModal from "@/components/DatePickerModal";
+import PhotoCropModal from "@/components/PhotoCropModal";
 import { COLORS } from "@/constants/colors";
 import { UserSettings } from "@/models/dataModels";
 import { SettingsStackParamList, TabParamList } from "@/navigation";
@@ -36,10 +37,13 @@ import {
 } from "@/utils/dateUtils";
 import {
   PhotoPermissionDeniedError,
+  PickedPhoto,
   deleteIfExistsAsync,
-  pickAndSaveProfilePhotoAsync,
+  pickPhotoAsync,
+  saveCroppedProfilePhotoAsync,
   resolvePhotoPath,
 } from "@/utils/photo";
+import { CropRect } from "@/utils/cropMath";
 import { logProfileCreated } from "@/services/analytics";
 import {
   requestNotificationPermissionAsync,
@@ -113,6 +117,9 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     draftSettings.notifyMilestoneEnabled
   );
 
+  const [pendingCropSource, setPendingCropSource] =
+    useState<PickedPhoto | null>(null);
+
   const startOfLocalDay = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const cloneDate = (d: Date) => new Date(d.getTime());
@@ -175,21 +182,44 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handlePickPhoto = async () => {
     try {
-      const newPath = await pickAndSaveProfilePhotoAsync();
-      if (!newPath) return;
-      const prev = formState.profilePhotoPath;
-      if (prev && prev !== existing?.profilePhotoPath) {
-        await deleteIfExistsAsync(prev);
-      }
-      setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
+      const picked = await pickPhotoAsync();
+      if (!picked) return;
+      setPendingCropSource(picked);
     } catch (e) {
       if (e instanceof PhotoPermissionDeniedError) {
         Alert.alert(
           "アクセス許可が必要です",
           "設定からフォトライブラリへのアクセスを許可してください。"
         );
+        return;
       }
+      console.error("Failed to pick photo", e);
+      Alert.alert("写真の追加に失敗しました", "再度お試しください。");
     }
+  };
+
+  const handleCropConfirm = async (cropRect: CropRect) => {
+    if (!pendingCropSource) return;
+    try {
+      const newPath = await saveCroppedProfilePhotoAsync(
+        pendingCropSource.uri,
+        cropRect
+      );
+      const prev = formState.profilePhotoPath;
+      if (prev && prev !== existing?.profilePhotoPath) {
+        await deleteIfExistsAsync(prev);
+      }
+      setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
+    } catch (error) {
+      console.error("Failed to save cropped profile photo", error);
+      Alert.alert("写真の追加に失敗しました", "再度お試しください。");
+    } finally {
+      setPendingCropSource(null);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setPendingCropSource(null);
   };
 
   const handleRemovePhoto = async () => {
@@ -607,6 +637,18 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
           maximumDate={activeDateField === "birth" ? today : MAX_DUE_DATE}
           onCancel={closeDatePicker}
           onConfirm={handleDateConfirm}
+        />
+      ) : null}
+      {pendingCropSource ? (
+        <PhotoCropModal
+          visible
+          imageUri={pendingCropSource.uri}
+          imageWidth={pendingCropSource.width}
+          imageHeight={pendingCropSource.height}
+          aspectRatio={1}
+          maskShape="circle"
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
         />
       ) : null}
     </SafeAreaView>
