@@ -136,24 +136,22 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
             {dateNumber}
           </Text>
         </View>
-        {hasAchievements &&
-          (day.achievementCount === 1 ? (
-            <View
-              style={styles.recordIcon}
-              accessible
-              accessibilityLabel="記録1件"
-            />
-          ) : (
-            <View
-              style={[styles.recordIcon, styles.recordCountBadge]}
-              accessible
-              accessibilityLabel={`記録${day.achievementCount}件`}
-            >
+        {hasAchievements && (
+          <View
+            style={[
+              styles.recordIcon,
+              day.achievementCount > 1 && styles.recordCountBadge,
+            ]}
+            accessible
+            accessibilityLabel={`記録${day.achievementCount}件`}
+          >
+            {day.achievementCount > 1 && (
               <Text style={styles.recordCountText}>
                 {day.achievementCount > 9 ? "9+" : day.achievementCount}
               </Text>
-            </View>
-          ))}
+            )}
+          </View>
+        )}
       </View>
       <View style={styles.contentArea}>
         {day.isCurrentMonth ? (
