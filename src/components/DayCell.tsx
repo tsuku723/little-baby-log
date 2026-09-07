@@ -136,7 +136,16 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
             {dateNumber}
           </Text>
         </View>
-        {hasAchievements && <View style={styles.recordIcon} />}
+        {hasAchievements &&
+          (day.achievementCount === 1 ? (
+            <View style={styles.recordIcon} />
+          ) : (
+            <View style={styles.recordCountBadge}>
+              <Text style={styles.recordCountText}>
+                {day.achievementCount > 9 ? "9+" : day.achievementCount}
+              </Text>
+            </View>
+          ))}
       </View>
       <View style={styles.contentArea}>
         {day.isCurrentMonth ? (
@@ -285,6 +294,23 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentMain,
     marginLeft: 1,
     marginTop: 1,
+  },
+
+  recordCountBadge: {
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: COLORS.accentMain,
+    marginLeft: 1,
+    marginTop: 1,
+    paddingHorizontal: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recordCountText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: COLORS.ageBadgeText,
   },
 
   hidden: { opacity: 0 },
