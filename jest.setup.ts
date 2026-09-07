@@ -1,3 +1,5 @@
+import "react-native-gesture-handler/jestSetup";
+
 jest.mock("expo-tracking-transparency", () => ({
   getTrackingPermissionsAsync: jest
     .fn()
