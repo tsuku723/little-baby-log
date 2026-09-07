@@ -47,6 +47,19 @@ Expo Go アプリ（iOS / Android）でQRコードを読み込むと実機確認
 
 > ⚠️ `react-native-webview` を使用する画面は Expo Go では動作しません。確認には Development Build が必要です。
 
+### 開発ビルド(development profile)のEASビルド
+
+TestFlight版と同一端末に共存させるため、developmentプロファイルは`bundleIdentifier`を動的に`studio.teeda.littlebabylog.dev`へ切り替えている(`app.config.js`)。
+
+`eas build --profile development`をローカル実行する際は、以下のように`EAS_DANGEROUS_OVERRIDE_IOS_BUNDLE_IDENTIFIER`を明示的に指定すること。
+
+```bash
+EAS_DANGEROUS_OVERRIDE_IOS_BUNDLE_IDENTIFIER=studio.teeda.littlebabylog.dev \
+  eas build --platform ios --profile development --non-interactive
+```
+
+**理由**: `eas build`のローカル/対話的な認証情報解決処理(`eas credentials`コマンドも同様)は、`app.config.js`の動的な`EAS_BUILD_PROFILE`分岐を認識せず、常に`app.json`の静的なbundleIdentifier(`studio.teeda.littlebabylog`、`.dev`なし)を見てしまう既知の問題がある([expo/expo#40851](https://github.com/expo/expo/issues/40851)などで報告あり)。この環境変数を指定しないと、プロダクション用の証明書・プロビジョニングプロファイルが誤って`.dev`ビルドに割り当てられ、`Could not find target 'app'`や`does not match the bundle ID`といったエラーでビルドが失敗する。
+
 ---
 
 ## コマンド

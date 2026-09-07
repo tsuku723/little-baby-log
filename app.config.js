@@ -17,10 +17,21 @@ module.exports = ({ config }) => {
     googleServicesFile = plistPath;
   }
 
+  // 開発ビルド(EASの"development"プロファイル)はTestFlight版と同一端末に共存できるよう
+  // bundleIdentifierを分ける。
+  // 注意: nameは変更しないこと。name(「リトルベビーログ」)はASCII文字を含まないため
+  // prebuild時のXcodeターゲット名サニタイズでは空文字→デフォルトの"app"にフォールバックしている。
+  // 末尾にASCII文字(例: "(Dev)")を付けるとターゲット名がそちらから生成されてしまい、
+  // 証明書側が前提とする"app"というターゲット名と食い違ってビルドが失敗する。
+  const isDevelopmentBuild = process.env.EAS_BUILD_PROFILE === "development";
+
   return {
     ...config,
     ios: {
       ...config.ios,
+      bundleIdentifier: isDevelopmentBuild
+        ? "studio.teeda.littlebabylog.dev"
+        : config.ios?.bundleIdentifier,
       googleServicesFile,
     },
   };

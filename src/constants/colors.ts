@@ -2,7 +2,7 @@ export const COLORS = {
   // Backgrounds
   background: "#FFFDF7",
   bottomBackground: "#FFFDF7",
-  surface: "#FFFDF7",
+  surface: "#FFFFFF",
   filterBackground: "#DFECE3",
 
   // Calendar cells
