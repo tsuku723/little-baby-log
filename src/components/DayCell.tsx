@@ -140,7 +140,7 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
           (day.achievementCount === 1 ? (
             <View style={styles.recordIcon} />
           ) : (
-            <View style={styles.recordCountBadge}>
+            <View style={[styles.recordIcon, styles.recordCountBadge]}>
               <Text style={styles.recordCountText}>
                 {day.achievementCount > 9 ? "9+" : day.achievementCount}
               </Text>
@@ -297,12 +297,9 @@ const styles = StyleSheet.create({
   },
 
   recordCountBadge: {
+    width: undefined,
     minWidth: 14,
-    height: 14,
     borderRadius: 7,
-    backgroundColor: COLORS.accentMain,
-    marginLeft: 1,
-    marginTop: 1,
     paddingHorizontal: 2,
     alignItems: "center",
     justifyContent: "center",
