@@ -26,7 +26,9 @@ type Props = {
   imageWidth: number;
   imageHeight: number;
   aspectRatio: number;
-  onConfirm: (cropRect: CropRect) => void;
+  /** 保存後に円形マスクで表示される用途（アバター等）の場合、枠のガイドも円形にする */
+  maskShape?: "rectangle" | "circle";
+  onConfirm: (cropRect: CropRect) => void | Promise<void>;
   onCancel: () => void;
 };
 
@@ -40,10 +42,12 @@ const PhotoCropModal: React.FC<Props> = ({
   imageWidth,
   imageHeight,
   aspectRatio,
+  maskShape = "rectangle",
   onConfirm,
   onCancel,
 }) => {
   const [cropAreaSize, setCropAreaSize] = useState({ width: 0, height: 0 });
+  const [isSaving, setIsSaving] = useState(false);
 
   const userScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -56,6 +60,7 @@ const PhotoCropModal: React.FC<Props> = ({
     userScale.value = 1;
     translateX.value = 0;
     translateY.value = 0;
+    setIsSaving(false);
   }, [visible, userScale, translateX, translateY]);
 
   const frame = useMemo(
@@ -169,7 +174,8 @@ const PhotoCropModal: React.FC<Props> = ({
     transform: [{ scale: userScale.value }],
   }));
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (isSaving) return;
     if (frame.width <= 0 || frame.height <= 0 || baseScale <= 0) return;
     const cropRect = calculateCropRect(
       imageWidth,
@@ -180,7 +186,19 @@ const PhotoCropModal: React.FC<Props> = ({
       translateX.value,
       translateY.value
     );
-    onConfirm(cropRect);
+    setIsSaving(true);
+    try {
+      await onConfirm(cropRect);
+    } finally {
+      // 確定成功時は通常このモーダル自体が閉じられるが、
+      // 失敗時にも再操作できるようフラグを戻しておく
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (isSaving) return;
+    onCancel();
   };
 
   return (
@@ -192,12 +210,28 @@ const PhotoCropModal: React.FC<Props> = ({
     >
       <GestureHandlerRootView style={styles.root}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onCancel} accessibilityRole="button">
-            <Text style={styles.headerText}>キャンセル</Text>
+          <TouchableOpacity
+            onPress={handleCancel}
+            disabled={isSaving}
+            accessibilityRole="button"
+          >
+            <Text
+              style={[styles.headerText, isSaving && styles.headerTextDisabled]}
+            >
+              キャンセル
+            </Text>
           </TouchableOpacity>
           <Text style={styles.title}>写真を調整</Text>
-          <TouchableOpacity onPress={handleConfirm} accessibilityRole="button">
-            <Text style={styles.headerText}>完了</Text>
+          <TouchableOpacity
+            onPress={handleConfirm}
+            disabled={isSaving}
+            accessibilityRole="button"
+          >
+            <Text
+              style={[styles.headerText, isSaving && styles.headerTextDisabled]}
+            >
+              完了
+            </Text>
           </TouchableOpacity>
         </View>
         <View
@@ -211,7 +245,14 @@ const PhotoCropModal: React.FC<Props> = ({
             <View
               style={[
                 styles.frame,
-                { width: frame.width, height: frame.height },
+                {
+                  width: frame.width,
+                  height: frame.height,
+                  borderRadius:
+                    maskShape === "circle"
+                      ? Math.min(frame.width, frame.height) / 2
+                      : 0,
+                },
               ]}
             >
               <GestureDetector gesture={composedGesture}>
@@ -250,6 +291,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.surface,
+  },
+  headerTextDisabled: {
+    opacity: 0.4,
   },
   title: {
     position: "absolute",

@@ -2,10 +2,20 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 
+import { CropRect } from "@/utils/cropMath";
+
 export class PhotoPermissionDeniedError extends Error {
   constructor() {
     super("Media library permission denied");
     this.name = "PhotoPermissionDeniedError";
+  }
+}
+
+/** 選択した写真の寸法が取得できず、トリミング座標を計算できない場合に投げる。 */
+export class PhotoDimensionsUnavailableError extends Error {
+  constructor() {
+    super("Picked photo is missing width/height");
+    this.name = "PhotoDimensionsUnavailableError";
   }
 }
 
@@ -92,13 +102,6 @@ const calculateResize = (
 
 export type PickedPhoto = { uri: string; width: number; height: number };
 
-export type PhotoCropRect = {
-  originX: number;
-  originY: number;
-  width: number;
-  height: number;
-};
-
 /**
  * 画像をライブラリから選択する（保存は行わない）。
  * 戻り値のサイズはトリミングUIでの表示・crop座標計算に使う。
@@ -121,24 +124,20 @@ export const pickPhotoAsync = async (): Promise<PickedPhoto | null> => {
 
   const asset = result.assets[0];
   if (!asset.width || !asset.height) {
-    return null;
+    throw new PhotoDimensionsUnavailableError();
   }
   return { uri: asset.uri, width: asset.width, height: asset.height };
 };
 
 /**
- * トリミング済み画像をアプリ専用ディレクトリに JPEG として保存する。
- * - 指定範囲でクロップ後、長辺 1600px 以内にリサイズ
- * - JPEG 圧縮 0.75（0.7〜0.8 の中間）
- * - HEIC/PNG なども JPEG に変換
- * - 戻り値は相対パス（例: achievement-photos/xxx.jpg）
+ * 指定範囲でクロップ後、長辺 1600px 以内にリサイズ・JPEG圧縮(0.75)する。
+ * HEIC/PNG なども JPEG に変換。加工後の一時ファイルURIを返す。
  */
-export const saveCroppedPhotoAsync = async (
+const cropResizeCompressAsync = async (
   sourceUri: string,
-  cropRect: PhotoCropRect
+  cropRect: CropRect
 ): Promise<string> => {
   const resizeActions = calculateResize(cropRect.width, cropRect.height);
-
   const manipulated = await ImageManipulator.manipulateAsync(
     sourceUri,
     [{ crop: cropRect }, ...resizeActions],
@@ -147,39 +146,42 @@ export const saveCroppedPhotoAsync = async (
       format: ImageManipulator.SaveFormat.JPEG,
     }
   );
+  return manipulated.uri;
+};
+
+/**
+ * トリミング済み画像をアプリ専用ディレクトリに JPEG として保存する。
+ * 戻り値は相対パス（例: achievement-photos/xxx.jpg）
+ */
+export const saveCroppedPhotoAsync = async (
+  sourceUri: string,
+  cropRect: CropRect
+): Promise<string> => {
+  const manipulatedUri = await cropResizeCompressAsync(sourceUri, cropRect);
 
   await ensurePhotoDirAsync();
   const fileName = buildPhotoFileName();
   const destination = `${PHOTO_DIR}${fileName}`;
 
-  await FileSystem.moveAsync({ from: manipulated.uri, to: destination });
+  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
   return `achievement-photos/${fileName}`;
 };
 
 /**
  * トリミング済みプロフィール写真を profile-photos/ に JPEG として保存する。
- * - 戻り値は相対パス（例: profile-photos/xxx.jpg）
+ * 戻り値は相対パス（例: profile-photos/xxx.jpg）
  */
 export const saveCroppedProfilePhotoAsync = async (
   sourceUri: string,
-  cropRect: PhotoCropRect
+  cropRect: CropRect
 ): Promise<string> => {
-  const resizeActions = calculateResize(cropRect.width, cropRect.height);
-
-  const manipulated = await ImageManipulator.manipulateAsync(
-    sourceUri,
-    [{ crop: cropRect }, ...resizeActions],
-    {
-      compress: JPEG_QUALITY,
-      format: ImageManipulator.SaveFormat.JPEG,
-    }
-  );
+  const manipulatedUri = await cropResizeCompressAsync(sourceUri, cropRect);
 
   await ensureProfilePhotoDirAsync();
   const fileName = buildProfilePhotoFileName();
   const destination = `${PROFILE_PHOTO_DIR}${fileName}`;
 
-  await FileSystem.moveAsync({ from: manipulated.uri, to: destination });
+  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
   return `profile-photos/${fileName}`;
 };
 

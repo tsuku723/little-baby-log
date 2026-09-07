@@ -27,6 +27,7 @@ import {
   pickPhotoAsync,
   saveCroppedPhotoAsync,
   saveCroppedProfilePhotoAsync,
+  PhotoDimensionsUnavailableError,
   PhotoPermissionDeniedError,
 } from "../src/utils/photo";
 
@@ -55,7 +56,7 @@ describe("photo utils", () => {
     await expect(pickPhotoAsync()).resolves.toBeNull();
   });
 
-  test("pickPhotoAsync returns null when asset dimensions are missing", async () => {
+  test("pickPhotoAsync throws PhotoDimensionsUnavailableError when asset dimensions are missing", async () => {
     (
       ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock
     ).mockResolvedValue({ granted: true });
@@ -64,7 +65,9 @@ describe("photo utils", () => {
       assets: [{ uri: "file:///tmp/src-no-size.png" }],
     });
 
-    await expect(pickPhotoAsync()).resolves.toBeNull();
+    await expect(pickPhotoAsync()).rejects.toThrow(
+      PhotoDimensionsUnavailableError
+    );
   });
 
   test("pickPhotoAsync returns picked uri and dimensions", async () => {
@@ -139,6 +142,32 @@ describe("photo utils", () => {
       { compress: 0.75, format: "jpeg" }
     );
     expect(FileSystem.makeDirectoryAsync).not.toHaveBeenCalled();
+  });
+
+  test("saveCroppedPhotoAsync uses height resize branch for portrait crop rects", async () => {
+    (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
+      uri: "file:///tmp/out-portrait.jpg",
+    });
+    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({
+      exists: true,
+    });
+
+    const portraitCropRect = {
+      originX: 0,
+      originY: 0,
+      width: 1600,
+      height: 3200,
+    };
+    await saveCroppedPhotoAsync(
+      "file:///tmp/src-portrait.png",
+      portraitCropRect
+    );
+
+    expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(
+      "file:///tmp/src-portrait.png",
+      [{ crop: portraitCropRect }, { resize: { height: 1600 } }],
+      { compress: 0.75, format: "jpeg" }
+    );
   });
 
   test("saveCroppedProfilePhotoAsync crops, resizes, creates dir, moves file, and returns destination", async () => {

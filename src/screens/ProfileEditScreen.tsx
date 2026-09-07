@@ -191,7 +191,10 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
           "アクセス許可が必要です",
           "設定からフォトライブラリへのアクセスを許可してください。"
         );
+        return;
       }
+      console.error("Failed to pick photo", e);
+      Alert.alert("写真の追加に失敗しました", "再度お試しください。");
     }
   };
 
@@ -643,6 +646,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
           imageWidth={pendingCropSource.width}
           imageHeight={pendingCropSource.height}
           aspectRatio={1}
+          maskShape="circle"
           onConfirm={handleCropConfirm}
           onCancel={handleCropCancel}
         />

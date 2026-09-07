@@ -9,8 +9,13 @@ export type CropRect = {
   height: number;
 };
 
-export const clamp = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(value, min), max);
+// gestureハンドラ(worklet)から直接呼ばれるため 'worklet' ディレクティブが必要。
+// reanimatedのbabelプラグインは別ファイルの関数を自動でworklet化しないため、
+// 呼び出し先の関数自身に明示する必要がある。
+export const clamp = (value: number, min: number, max: number): number => {
+  "worklet";
+  return Math.min(Math.max(value, min), max);
+};
 
 /**
  * クロップ可能領域(pt)とaspectRatio(width/height)から、
@@ -49,6 +54,7 @@ export const calculatePanBounds = (
   baseScale: number,
   userScale: number
 ): PanBounds => {
+  "worklet";
   const displayScale = baseScale * userScale;
   const displayWidth = imageWidth * displayScale;
   const displayHeight = imageHeight * displayScale;
