@@ -23,6 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { RootStackParamList } from "@/navigation";
 import AppText from "@/components/AppText";
 import DatePickerModal from "@/components/DatePickerModal";
+import PhotoCropModal from "@/components/PhotoCropModal";
 import { useActiveUser } from "@/state/AppStateContext";
 import {
   SaveAchievementPayload,
@@ -36,12 +37,15 @@ import {
   toUtcDateOnly,
 } from "@/utils/dateUtils";
 import {
+  PickedPhoto,
   deleteIfExistsAsync,
   ensureFileExistsAsync,
-  pickAndSavePhotoAsync,
+  pickPhotoAsync,
+  saveCroppedPhotoAsync,
   resolvePhotoPath,
   PhotoPermissionDeniedError,
 } from "@/utils/photo";
+import { CropRect } from "@/utils/cropMath";
 import { RECORD_TITLE_CANDIDATE_SECTIONS } from "./recordTitleCandidates";
 import { COLORS } from "@/constants/colors";
 import { logRecordCreated } from "@/services/analytics";
@@ -81,6 +85,8 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
     editingRecord?.photoPath ?? null
   );
   const [hasRemovedPhoto, setHasRemovedPhoto] = useState<boolean>(false);
+  const [pendingCropSource, setPendingCropSource] =
+    useState<PickedPhoto | null>(null);
   const [isTitleSheetVisible, setTitleSheetVisible] = useState(false);
   const MIN_DATE = useMemo(() => new Date(1900, 0, 1), []);
   const MAX_DATE = useMemo(() => new Date(2100, 11, 31), []);
@@ -152,19 +158,10 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handlePickPhoto = async () => {
-    const previousTempPhoto =
-      photoPath && photoPath !== editingRecord?.photoPath ? photoPath : null;
     try {
-      const next = await pickAndSavePhotoAsync();
-      if (!next) return;
-
-      if (previousTempPhoto && previousTempPhoto !== next) {
-        // 編集画面で選び直した未保存の写真は不要になるためクリーンアップする
-        await deleteIfExistsAsync(previousTempPhoto);
-      }
-
-      setPhotoPath(next);
-      setHasRemovedPhoto(false);
+      const picked = await pickPhotoAsync();
+      if (!picked) return;
+      setPendingCropSource(picked);
     } catch (error) {
       if (error instanceof PhotoPermissionDeniedError) {
         Alert.alert(
@@ -180,6 +177,32 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
       console.error("Failed to pick photo", error);
       Alert.alert("写真の追加に失敗しました", "再度お試しください。");
     }
+  };
+
+  const handleCropConfirm = async (cropRect: CropRect) => {
+    if (!pendingCropSource) return;
+    const previousTempPhoto =
+      photoPath && photoPath !== editingRecord?.photoPath ? photoPath : null;
+    try {
+      const next = await saveCroppedPhotoAsync(pendingCropSource.uri, cropRect);
+
+      if (previousTempPhoto && previousTempPhoto !== next) {
+        // 編集画面で選び直した未保存の写真は不要になるためクリーンアップする
+        await deleteIfExistsAsync(previousTempPhoto);
+      }
+
+      setPhotoPath(next);
+      setHasRemovedPhoto(false);
+    } catch (error) {
+      console.error("Failed to save cropped photo", error);
+      Alert.alert("写真の追加に失敗しました", "再度お試しください。");
+    } finally {
+      setPendingCropSource(null);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setPendingCropSource(null);
   };
 
   const handleRemovePhoto = async () => {
@@ -495,6 +518,17 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
         onConfirm={handleDateConfirm}
         onCancel={closeDatePicker}
       />
+      {pendingCropSource ? (
+        <PhotoCropModal
+          visible
+          imageUri={pendingCropSource.uri}
+          imageWidth={pendingCropSource.width}
+          imageHeight={pendingCropSource.height}
+          aspectRatio={3 / 2}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
+      ) : null}
     </SafeAreaView>
   );
 };

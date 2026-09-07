@@ -1,5 +1,6 @@
 import React from "react";
-import { StatusBar, View } from "react-native";
+import { StatusBar } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import {
   useFonts,
@@ -23,7 +24,7 @@ const App: React.FC = () => {
   if (!fontsLoaded) return null;
 
   return (
-    <View style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
       <AppStateProvider>
         <AchievementsProvider>
@@ -32,7 +33,7 @@ const App: React.FC = () => {
           </TrackingReadyProvider>
         </AchievementsProvider>
       </AppStateProvider>
-    </View>
+    </GestureHandlerRootView>
   );
 };
 

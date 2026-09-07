@@ -23,6 +23,19 @@ jest.mock("@/components/DatePickerModal", () => ({
   default: () => null,
 }));
 
+jest.mock("@/components/PhotoCropModal", () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+jest.mock("@/utils/photo", () => ({
+  PhotoPermissionDeniedError: class PhotoPermissionDeniedError extends Error {},
+  pickPhotoAsync: jest.fn().mockResolvedValue(null),
+  saveCroppedProfilePhotoAsync: jest.fn().mockResolvedValue(null),
+  deleteIfExistsAsync: jest.fn().mockResolvedValue(undefined),
+  resolvePhotoPath: (path: string) => path,
+}));
+
 jest.mock("@/state/AppStateContext", () => ({
   useAppState: () => ({
     state: mockAppState,
