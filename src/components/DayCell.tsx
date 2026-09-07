@@ -138,9 +138,17 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
         </View>
         {hasAchievements &&
           (day.achievementCount === 1 ? (
-            <View style={styles.recordIcon} />
+            <View
+              style={styles.recordIcon}
+              accessible
+              accessibilityLabel="記録1件"
+            />
           ) : (
-            <View style={[styles.recordIcon, styles.recordCountBadge]}>
+            <View
+              style={[styles.recordIcon, styles.recordCountBadge]}
+              accessible
+              accessibilityLabel={`記録${day.achievementCount}件`}
+            >
               <Text style={styles.recordCountText}>
                 {day.achievementCount > 9 ? "9+" : day.achievementCount}
               </Text>
@@ -307,7 +315,7 @@ const styles = StyleSheet.create({
   recordCountText: {
     fontSize: 8,
     fontWeight: "700",
-    color: COLORS.ageBadgeText,
+    color: COLORS.textPrimary,
   },
 
   hidden: { opacity: 0 },
