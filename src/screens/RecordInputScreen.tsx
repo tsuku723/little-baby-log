@@ -493,6 +493,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
             keyExtractor={(item) => item}
             contentContainerStyle={styles.sheetList}
             keyboardShouldPersistTaps="handled"
+            stickySectionHeadersEnabled={false}
             renderSectionHeader={({ section }) => (
               <Text style={styles.sectionHeader}>{section.name}</Text>
             )}
