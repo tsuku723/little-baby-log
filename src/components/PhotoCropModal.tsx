@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Gesture,
   GestureDetector,
@@ -35,6 +36,7 @@ type Props = {
 const MIN_USER_SCALE = 1;
 const MAX_USER_SCALE = 4;
 const FRAME_MARGIN = 24;
+const DIM_OVERLAY_COLOR = "rgba(0, 0, 0, 0.6)";
 
 const PhotoCropModal: React.FC<Props> = ({
   visible,
@@ -46,6 +48,7 @@ const PhotoCropModal: React.FC<Props> = ({
   onConfirm,
   onCancel,
 }) => {
+  const insets = useSafeAreaInsets();
   const [cropAreaSize, setCropAreaSize] = useState({ width: 0, height: 0 });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -201,6 +204,11 @@ const PhotoCropModal: React.FC<Props> = ({
     onCancel();
   };
 
+  // 枠の外側を暗くするための帯（上下左右）。枠は常にcropArea中央に配置される前提で計算する。
+  const marginX = Math.max(0, (cropAreaSize.width - frame.width) / 2);
+  const marginY = Math.max(0, (cropAreaSize.height - frame.height) / 2);
+  const isReady = frame.width > 0 && frame.height > 0 && baseScale > 0;
+
   return (
     <Modal
       animationType="fade"
@@ -209,8 +217,9 @@ const PhotoCropModal: React.FC<Props> = ({
       statusBarTranslucent
     >
       <GestureHandlerRootView style={styles.root}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
+            style={styles.headerSideButton}
             onPress={handleCancel}
             disabled={isSaving}
             accessibilityRole="button"
@@ -223,6 +232,7 @@ const PhotoCropModal: React.FC<Props> = ({
           </TouchableOpacity>
           <Text style={styles.title}>写真を調整</Text>
           <TouchableOpacity
+            style={[styles.headerSideButton, styles.headerSideButtonRight]}
             onPress={handleConfirm}
             disabled={isSaving}
             accessibilityRole="button"
@@ -241,32 +251,76 @@ const PhotoCropModal: React.FC<Props> = ({
             setCropAreaSize({ width, height });
           }}
         >
-          {frame.width > 0 && baseScale > 0 ? (
-            <View
-              style={[
-                styles.frame,
-                {
-                  width: frame.width,
-                  height: frame.height,
-                  borderRadius:
-                    maskShape === "circle"
-                      ? Math.min(frame.width, frame.height) / 2
-                      : 0,
-                },
-              ]}
-            >
-              <GestureDetector gesture={composedGesture}>
-                <Animated.View style={[styles.panLayer, translateStyle]}>
-                  <Animated.Image
-                    source={{ uri: imageUri }}
-                    style={scaleStyle}
-                  />
-                </Animated.View>
-              </GestureDetector>
-            </View>
+          {isReady ? (
+            <>
+              <View style={styles.imageBleedLayer}>
+                <GestureDetector gesture={composedGesture}>
+                  <Animated.View style={[styles.panLayer, translateStyle]}>
+                    <Animated.Image
+                      source={{ uri: imageUri }}
+                      style={scaleStyle}
+                    />
+                  </Animated.View>
+                </GestureDetector>
+              </View>
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.dimBand,
+                  { top: 0, left: 0, right: 0, height: marginY },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.dimBand,
+                  { bottom: 0, left: 0, right: 0, height: marginY },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.dimBand,
+                  {
+                    top: marginY,
+                    left: 0,
+                    width: marginX,
+                    height: frame.height,
+                  },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.dimBand,
+                  {
+                    top: marginY,
+                    right: 0,
+                    width: marginX,
+                    height: frame.height,
+                  },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.frameBorder,
+                  {
+                    top: marginY,
+                    left: marginX,
+                    width: frame.width,
+                    height: frame.height,
+                    borderRadius:
+                      maskShape === "circle"
+                        ? Math.min(frame.width, frame.height) / 2
+                        : 0,
+                  },
+                ]}
+              />
+            </>
           ) : null}
         </View>
-        <Text style={styles.helperText}>
+        <Text style={[styles.helperText, { paddingBottom: insets.bottom + 8 }]}>
           ピンチで拡大縮小、ドラッグで位置を調整できます
         </Text>
       </GestureHandlerRootView>
@@ -282,10 +336,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    position: "relative",
+    paddingBottom: 14,
+  },
+  headerSideButton: {
+    minWidth: 64,
+  },
+  headerSideButtonRight: {
+    alignItems: "flex-end",
   },
   headerText: {
     fontSize: 16,
@@ -296,9 +354,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   title: {
-    position: "absolute",
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: "center",
     fontSize: 16,
     fontWeight: "700",
@@ -306,23 +362,28 @@ const styles = StyleSheet.create({
   },
   cropArea: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
     overflow: "hidden",
   },
-  frame: {
-    overflow: "hidden",
+  imageBleedLayer: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
+  },
+  panLayer: {},
+  dimBand: {
+    position: "absolute",
+    backgroundColor: DIM_OVERLAY_COLOR,
+  },
+  frameBorder: {
+    position: "absolute",
     borderWidth: 2,
     borderColor: COLORS.surface,
   },
-  panLayer: {},
   helperText: {
     textAlign: "center",
     color: COLORS.surface,
     fontSize: 13,
-    paddingVertical: 16,
+    paddingTop: 16,
   },
 });
 
