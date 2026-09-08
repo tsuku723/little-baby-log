@@ -122,19 +122,29 @@ describe("photo utils", () => {
     expect(result).toBe(`achievement-photos/${arg.to.split("/").pop()}`);
   });
 
-  test("saveDirectPhotoAsync resizes without cropping, creates dir, moves file, and returns destination", async () => {
-    (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
-      uri: "file:///tmp/out-direct.jpg",
-    });
+  test("saveDirectPhotoAsync probes real dimensions, resizes by long edge, creates dir, moves file, and returns destination", async () => {
+    (ImageManipulator.manipulateAsync as jest.Mock)
+      .mockResolvedValueOnce({
+        uri: "file:///tmp/probe.png",
+        width: 1000,
+        height: 5000,
+      })
+      .mockResolvedValueOnce({ uri: "file:///tmp/out-direct.jpg" });
     (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({
       exists: false,
     });
 
     const result = await saveDirectPhotoAsync("file:///tmp/src-no-size.png");
 
-    expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(
+    expect(ImageManipulator.manipulateAsync).toHaveBeenNthCalledWith(
+      1,
       "file:///tmp/src-no-size.png",
-      [{ resize: { width: 1600 } }],
+      []
+    );
+    expect(ImageManipulator.manipulateAsync).toHaveBeenNthCalledWith(
+      2,
+      "file:///tmp/src-no-size.png",
+      [{ resize: { height: 1600 } }],
       { compress: 0.75, format: "jpeg" }
     );
     expect(FileSystem.makeDirectoryAsync).toHaveBeenCalledWith(

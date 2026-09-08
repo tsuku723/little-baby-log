@@ -136,19 +136,43 @@ const resizeCompressAsync = async (
   sourceUri: string,
   cropRect?: CropRect
 ): Promise<string> => {
-  const resizeActions = calculateResize(cropRect?.width, cropRect?.height);
-  const actions: ImageManipulator.Action[] = cropRect
-    ? [{ crop: cropRect }, ...resizeActions]
-    : resizeActions;
+  if (cropRect) {
+    const manipulated = await ImageManipulator.manipulateAsync(
+      sourceUri,
+      [{ crop: cropRect }, ...calculateResize(cropRect.width, cropRect.height)],
+      {
+        compress: JPEG_QUALITY,
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
+    return manipulated.uri;
+  }
+
+  // crop無し（寸法不明な端末向けフォールバック）の場合、長辺1600pxを正しく守るため
+  // 一度実寸を取得してからリサイズ量を決める。
+  const probe = await ImageManipulator.manipulateAsync(sourceUri, []);
   const manipulated = await ImageManipulator.manipulateAsync(
     sourceUri,
-    actions,
+    calculateResize(probe.width, probe.height),
     {
       compress: JPEG_QUALITY,
       format: ImageManipulator.SaveFormat.JPEG,
     }
   );
   return manipulated.uri;
+};
+
+const persistManipulatedPhotoAsync = async (
+  manipulatedUri: string,
+  dir: string,
+  buildFileName: () => string,
+  relativeDir: string
+): Promise<string> => {
+  const fileName = buildFileName();
+  const destination = `${dir}${fileName}`;
+
+  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
+  return `${relativeDir}/${fileName}`;
 };
 
 /**
@@ -160,13 +184,13 @@ export const saveCroppedPhotoAsync = async (
   cropRect: CropRect
 ): Promise<string> => {
   const manipulatedUri = await resizeCompressAsync(sourceUri, cropRect);
-
   await ensurePhotoDirAsync();
-  const fileName = buildPhotoFileName();
-  const destination = `${PHOTO_DIR}${fileName}`;
-
-  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
-  return `achievement-photos/${fileName}`;
+  return persistManipulatedPhotoAsync(
+    manipulatedUri,
+    PHOTO_DIR,
+    buildPhotoFileName,
+    "achievement-photos"
+  );
 };
 
 /**
@@ -179,13 +203,13 @@ export const saveDirectPhotoAsync = async (
   sourceUri: string
 ): Promise<string> => {
   const manipulatedUri = await resizeCompressAsync(sourceUri);
-
   await ensurePhotoDirAsync();
-  const fileName = buildPhotoFileName();
-  const destination = `${PHOTO_DIR}${fileName}`;
-
-  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
-  return `achievement-photos/${fileName}`;
+  return persistManipulatedPhotoAsync(
+    manipulatedUri,
+    PHOTO_DIR,
+    buildPhotoFileName,
+    "achievement-photos"
+  );
 };
 
 /**
@@ -197,13 +221,13 @@ export const saveCroppedProfilePhotoAsync = async (
   cropRect: CropRect
 ): Promise<string> => {
   const manipulatedUri = await resizeCompressAsync(sourceUri, cropRect);
-
   await ensureProfilePhotoDirAsync();
-  const fileName = buildProfilePhotoFileName();
-  const destination = `${PROFILE_PHOTO_DIR}${fileName}`;
-
-  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
-  return `profile-photos/${fileName}`;
+  return persistManipulatedPhotoAsync(
+    manipulatedUri,
+    PROFILE_PHOTO_DIR,
+    buildProfilePhotoFileName,
+    "profile-photos"
+  );
 };
 
 /**
@@ -216,13 +240,13 @@ export const saveDirectProfilePhotoAsync = async (
   sourceUri: string
 ): Promise<string> => {
   const manipulatedUri = await resizeCompressAsync(sourceUri);
-
   await ensureProfilePhotoDirAsync();
-  const fileName = buildProfilePhotoFileName();
-  const destination = `${PROFILE_PHOTO_DIR}${fileName}`;
-
-  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
-  return `profile-photos/${fileName}`;
+  return persistManipulatedPhotoAsync(
+    manipulatedUri,
+    PROFILE_PHOTO_DIR,
+    buildProfilePhotoFileName,
+    "profile-photos"
+  );
 };
 
 const toSafeRelativePath = (path: string): string | null => {
