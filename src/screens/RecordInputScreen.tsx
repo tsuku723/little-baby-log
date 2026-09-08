@@ -316,6 +316,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
           <TouchableOpacity
             style={styles.navButton}
             onPress={() => navigation.goBack()}
+            accessibilityRole="button"
           >
             <Text style={styles.navButtonText}>戻る</Text>
           </TouchableOpacity>
