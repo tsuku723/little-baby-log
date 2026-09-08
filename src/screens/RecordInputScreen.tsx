@@ -308,18 +308,20 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
     // プロフィールが無い場合は案内のみ表示して戻る
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centered}>
+        <View style={styles.emptyContainer}>
           <Text style={styles.title}>プロフィールを作成してください</Text>
           <Text style={styles.note}>
             記録を保存するにはプロフィールが必要です。
           </Text>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => navigation.goBack()}
-            accessibilityRole="button"
-          >
-            <Text style={styles.navButtonText}>戻る</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => navigation.goBack()}
+              accessibilityRole="button"
+            >
+              <Text style={styles.navButtonText}>戻る</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -552,22 +554,22 @@ const styles = StyleSheet.create({
     gap: 20,
     paddingBottom: 140,
   },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
+  emptyContainer: {
+    flexGrow: 1,
     padding: 24,
+    gap: 16,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
     color: COLORS.textPrimary,
   },
   note: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: "center",
+    fontSize: 16,
+    color: COLORS.textPrimary,
+  },
+  buttonRow: {
+    marginTop: 12,
   },
   navButton: {
     alignItems: "center",
