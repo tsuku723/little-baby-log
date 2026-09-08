@@ -21,6 +21,10 @@ interface Props {
 
 const CELL_HEIGHT = 64;
 const HAIR = StyleSheet.hairlineWidth;
+/** この件数を超えるとバッジが丸ドットから件数表示に切り替わる */
+const RECORD_COUNT_BADGE_THRESHOLD = 1;
+/** バッジに表示する件数の上限。超える場合は「9+」と表示する */
+const RECORD_COUNT_DISPLAY_MAX = 9;
 
 const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
   const isDimmed = !day.isCurrentMonth;
@@ -140,16 +144,18 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
           <View
             style={[
               styles.recordMarkBase,
-              day.achievementCount > 1
+              day.achievementCount > RECORD_COUNT_BADGE_THRESHOLD
                 ? styles.recordCountBadge
                 : styles.recordDot,
             ]}
             accessible
             accessibilityLabel={`記録${day.achievementCount}件`}
           >
-            {day.achievementCount > 1 && (
+            {day.achievementCount > RECORD_COUNT_BADGE_THRESHOLD && (
               <Text style={styles.recordCountText}>
-                {day.achievementCount > 9 ? "9+" : day.achievementCount}
+                {day.achievementCount > RECORD_COUNT_DISPLAY_MAX
+                  ? `${RECORD_COUNT_DISPLAY_MAX}+`
+                  : day.achievementCount}
               </Text>
             )}
           </View>

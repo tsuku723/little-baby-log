@@ -184,12 +184,11 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
     const previousTempPhoto =
       photoPath && photoPath !== editingRecord?.photoPath ? photoPath : null;
     try {
-      const next = await saveCroppedPhotoAsync(pendingCropSource.uri, cropRect);
-
-      if (previousTempPhoto && previousTempPhoto !== next) {
+      const [next] = await Promise.all([
+        saveCroppedPhotoAsync(pendingCropSource.uri, cropRect),
         // 編集画面で選び直した未保存の写真は不要になるためクリーンアップする
-        await deleteIfExistsAsync(previousTempPhoto);
-      }
+        previousTempPhoto ? deleteIfExistsAsync(previousTempPhoto) : null,
+      ]);
 
       setPhotoPath(next);
       setHasRemovedPhoto(false);
