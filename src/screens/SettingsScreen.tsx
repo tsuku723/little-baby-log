@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as Sharing from "expo-sharing";
+import * as Updates from "expo-updates";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { SettingsStackParamList } from "@/navigation";
@@ -42,6 +43,13 @@ const supportMenus: Array<{ label: string; route: SupportRoute }> = [
   { label: "オープンソースライセンス", route: "OpenSourceLicenses" },
   { label: "お問い合わせ", route: "Contact" },
 ];
+
+// developmentビルド(eas.json)はJS実行環境がproductionのため__DEV__がfalseになる。
+// CI(eas-update.yml)はブランチごとに同名のchannelを作成してOTA配信するため、
+// channel名は固定の"development"ではなくブランチ名になる。
+// 本番配布(eas build --profile production)のみchannelが"production"になるため、
+// それ以外（ローカル開発・各ブランチのOTA配信）を開発ビルド扱いとする。
+const isDevBuild = __DEV__ || Updates.channel !== "production";
 
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const { state, setActiveUser, restoreState } = useAppState();
@@ -125,6 +133,23 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
         ]
       );
     });
+  }, [restoreState]);
+
+  const handleDevResetAllData = useCallback(() => {
+    Alert.alert(
+      "【開発用】全データを削除",
+      "プロフィール・記録などすべてのデータを削除します。この操作は元に戻せません。続けますか？",
+      [
+        { text: "キャンセル", style: "cancel" },
+        {
+          text: "削除する",
+          style: "destructive",
+          onPress: () => {
+            void restoreState([], {});
+          },
+        },
+      ]
+    );
   }, [restoreState]);
 
   return (
@@ -255,6 +280,22 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             })}
           </View>
         </View>
+
+        {isDevBuild && (
+          <View style={styles.devSection}>
+            <Text style={styles.label}>開発用</Text>
+            <TouchableOpacity
+              testID="dev-reset-button"
+              style={styles.devResetButton}
+              onPress={handleDevResetAllData}
+              accessibilityRole="button"
+            >
+              <Text style={styles.devResetButtonText}>
+                全データを削除（テスト用）
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -402,6 +443,24 @@ const styles = StyleSheet.create({
   supportMenuLabel: {
     fontSize: 16,
     color: COLORS.textPrimary,
+  },
+  devSection: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  devResetButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#D32F2F",
+    backgroundColor: "#FBE9E7",
+    alignItems: "center",
+  },
+  devResetButtonText: {
+    color: "#D32F2F",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
 
