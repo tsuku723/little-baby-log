@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as Sharing from "expo-sharing";
+import * as Updates from "expo-updates";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { SettingsStackParamList } from "@/navigation";
@@ -42,6 +43,10 @@ const supportMenus: Array<{ label: string; route: SupportRoute }> = [
   { label: "オープンソースライセンス", route: "OpenSourceLicenses" },
   { label: "お問い合わせ", route: "Contact" },
 ];
+
+// developmentビルド(eas.json)はJS実行環境がproductionのため__DEV__がfalseになる。
+// そのため開発ビルドかどうかはUpdatesのchannel名でも判定する。
+const isDevBuild = __DEV__ || Updates.channel === "development";
 
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const { state, setActiveUser, restoreState } = useAppState();
@@ -273,7 +278,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        {__DEV__ && (
+        {isDevBuild && (
           <View style={styles.devSection}>
             <Text style={styles.label}>開発用</Text>
             <TouchableOpacity
