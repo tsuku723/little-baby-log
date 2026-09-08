@@ -45,8 +45,11 @@ const supportMenus: Array<{ label: string; route: SupportRoute }> = [
 ];
 
 // developmentビルド(eas.json)はJS実行環境がproductionのため__DEV__がfalseになる。
-// そのため開発ビルドかどうかはUpdatesのchannel名でも判定する。
-const isDevBuild = __DEV__ || Updates.channel === "development";
+// CI(eas-update.yml)はブランチごとに同名のchannelを作成してOTA配信するため、
+// channel名は固定の"development"ではなくブランチ名になる。
+// 本番配布(eas build --profile production)のみchannelが"production"になるため、
+// それ以外（ローカル開発・各ブランチのOTA配信）を開発ビルド扱いとする。
+const isDevBuild = __DEV__ || Updates.channel !== "production";
 
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const { state, setActiveUser, restoreState } = useAppState();
