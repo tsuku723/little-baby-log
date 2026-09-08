@@ -11,14 +11,6 @@ export class PhotoPermissionDeniedError extends Error {
   }
 }
 
-/** 選択した写真の寸法が取得できず、トリミング座標を計算できない場合に投げる。 */
-export class PhotoDimensionsUnavailableError extends Error {
-  constructor() {
-    super("Picked photo is missing width/height");
-    this.name = "PhotoDimensionsUnavailableError";
-  }
-}
-
 const PHOTO_DIR = `${FileSystem.documentDirectory}achievement-photos/`;
 const PROFILE_PHOTO_DIR = `${FileSystem.documentDirectory}profile-photos/`;
 const MAX_LONG_EDGE = 1600;
@@ -100,11 +92,18 @@ const calculateResize = (
     : [{ resize: { height: Math.round(height / ratio) } }];
 };
 
-export type PickedPhoto = { uri: string; width: number; height: number };
+/** 寸法が確定している、トリミングUIに渡せる状態の写真。 */
+export type SizedPickedPhoto = { uri: string; width: number; height: number };
+
+export type PickedPhoto =
+  | SizedPickedPhoto
+  | { uri: string; width: null; height: null };
 
 /**
  * 画像をライブラリから選択する（保存は行わない）。
  * 戻り値のサイズはトリミングUIでの表示・crop座標計算に使う。
+ * 端末・ピッカーによっては寸法が取得できないことがあり、その場合は width/height が null になる
+ * （呼び出し側はトリミングをスキップして保存する）。
  */
 export const pickPhotoAsync = async (): Promise<PickedPhoto | null> => {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -124,23 +123,26 @@ export const pickPhotoAsync = async (): Promise<PickedPhoto | null> => {
 
   const asset = result.assets[0];
   if (!asset.width || !asset.height) {
-    throw new PhotoDimensionsUnavailableError();
+    return { uri: asset.uri, width: null, height: null };
   }
   return { uri: asset.uri, width: asset.width, height: asset.height };
 };
 
 /**
- * 指定範囲でクロップ後、長辺 1600px 以内にリサイズ・JPEG圧縮(0.75)する。
+ * （指定範囲があればクロップ後）長辺 1600px 以内にリサイズ・JPEG圧縮(0.75)する。
  * HEIC/PNG なども JPEG に変換。加工後の一時ファイルURIを返す。
  */
-const cropResizeCompressAsync = async (
+const resizeCompressAsync = async (
   sourceUri: string,
-  cropRect: CropRect
+  cropRect?: CropRect
 ): Promise<string> => {
-  const resizeActions = calculateResize(cropRect.width, cropRect.height);
+  const resizeActions = calculateResize(cropRect?.width, cropRect?.height);
+  const actions: ImageManipulator.Action[] = cropRect
+    ? [{ crop: cropRect }, ...resizeActions]
+    : resizeActions;
   const manipulated = await ImageManipulator.manipulateAsync(
     sourceUri,
-    [{ crop: cropRect }, ...resizeActions],
+    actions,
     {
       compress: JPEG_QUALITY,
       format: ImageManipulator.SaveFormat.JPEG,
@@ -157,7 +159,26 @@ export const saveCroppedPhotoAsync = async (
   sourceUri: string,
   cropRect: CropRect
 ): Promise<string> => {
-  const manipulatedUri = await cropResizeCompressAsync(sourceUri, cropRect);
+  const manipulatedUri = await resizeCompressAsync(sourceUri, cropRect);
+
+  await ensurePhotoDirAsync();
+  const fileName = buildPhotoFileName();
+  const destination = `${PHOTO_DIR}${fileName}`;
+
+  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
+  return `achievement-photos/${fileName}`;
+};
+
+/**
+ * トリミングをスキップし、画像をそのまま（1600px基準にリサイズのみ）
+ * アプリ専用ディレクトリに JPEG として保存する。
+ * 選択した画像の寸法が取得できない端末向けのフォールバック。
+ * 戻り値は相対パス（例: achievement-photos/xxx.jpg）
+ */
+export const saveDirectPhotoAsync = async (
+  sourceUri: string
+): Promise<string> => {
+  const manipulatedUri = await resizeCompressAsync(sourceUri);
 
   await ensurePhotoDirAsync();
   const fileName = buildPhotoFileName();
@@ -175,7 +196,26 @@ export const saveCroppedProfilePhotoAsync = async (
   sourceUri: string,
   cropRect: CropRect
 ): Promise<string> => {
-  const manipulatedUri = await cropResizeCompressAsync(sourceUri, cropRect);
+  const manipulatedUri = await resizeCompressAsync(sourceUri, cropRect);
+
+  await ensureProfilePhotoDirAsync();
+  const fileName = buildProfilePhotoFileName();
+  const destination = `${PROFILE_PHOTO_DIR}${fileName}`;
+
+  await FileSystem.moveAsync({ from: manipulatedUri, to: destination });
+  return `profile-photos/${fileName}`;
+};
+
+/**
+ * トリミングをスキップし、画像をそのまま（1600px基準にリサイズのみ）
+ * profile-photos/ に JPEG として保存する。
+ * 選択した画像の寸法が取得できない端末向けのフォールバック。
+ * 戻り値は相対パス（例: profile-photos/xxx.jpg）
+ */
+export const saveDirectProfilePhotoAsync = async (
+  sourceUri: string
+): Promise<string> => {
+  const manipulatedUri = await resizeCompressAsync(sourceUri);
 
   await ensureProfilePhotoDirAsync();
   const fileName = buildProfilePhotoFileName();

@@ -37,10 +37,11 @@ import {
 } from "@/utils/dateUtils";
 import {
   PhotoPermissionDeniedError,
-  PickedPhoto,
+  SizedPickedPhoto,
   deleteIfExistsAsync,
   pickPhotoAsync,
   saveCroppedProfilePhotoAsync,
+  saveDirectProfilePhotoAsync,
   resolvePhotoPath,
 } from "@/utils/photo";
 import { CropRect } from "@/utils/cropMath";
@@ -118,7 +119,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const [pendingCropSource, setPendingCropSource] =
-    useState<PickedPhoto | null>(null);
+    useState<SizedPickedPhoto | null>(null);
 
   const startOfLocalDay = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -180,10 +181,24 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     return Boolean(name) && isIsoDateString(birthDate);
   }, [formState.birthDate, formState.name]);
 
+  const applyNewProfilePhoto = async (newPath: string) => {
+    const prev = formState.profilePhotoPath;
+    if (prev && prev !== existing?.profilePhotoPath) {
+      await deleteIfExistsAsync(prev);
+    }
+    setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
+  };
+
   const handlePickPhoto = async () => {
     try {
       const picked = await pickPhotoAsync();
       if (!picked) return;
+      if (picked.width == null || picked.height == null) {
+        // 寸法が取得できない端末はトリミングをスキップして保存する
+        const newPath = await saveDirectProfilePhotoAsync(picked.uri);
+        await applyNewProfilePhoto(newPath);
+        return;
+      }
       setPendingCropSource(picked);
     } catch (e) {
       if (e instanceof PhotoPermissionDeniedError) {
@@ -205,11 +220,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         pendingCropSource.uri,
         cropRect
       );
-      const prev = formState.profilePhotoPath;
-      if (prev && prev !== existing?.profilePhotoPath) {
-        await deleteIfExistsAsync(prev);
-      }
-      setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
+      await applyNewProfilePhoto(newPath);
     } catch (error) {
       console.error("Failed to save cropped profile photo", error);
       Alert.alert("写真の追加に失敗しました", "再度お試しください。");
