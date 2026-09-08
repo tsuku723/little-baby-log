@@ -127,6 +127,23 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     });
   }, [restoreState]);
 
+  const handleDevResetAllData = useCallback(() => {
+    Alert.alert(
+      "【開発用】全データを削除",
+      "プロフィール・記録などすべてのデータを削除します。この操作は元に戻せません。続けますか？",
+      [
+        { text: "キャンセル", style: "cancel" },
+        {
+          text: "削除する",
+          style: "destructive",
+          onPress: () => {
+            void restoreState([], {});
+          },
+        },
+      ]
+    );
+  }, [restoreState]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -255,6 +272,22 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             })}
           </View>
         </View>
+
+        {__DEV__ && (
+          <View style={styles.devSection}>
+            <Text style={styles.label}>開発用</Text>
+            <TouchableOpacity
+              testID="dev-reset-button"
+              style={styles.devResetButton}
+              onPress={handleDevResetAllData}
+              accessibilityRole="button"
+            >
+              <Text style={styles.devResetButtonText}>
+                全データを削除（テスト用）
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -402,6 +435,24 @@ const styles = StyleSheet.create({
   supportMenuLabel: {
     fontSize: 16,
     color: COLORS.textPrimary,
+  },
+  devSection: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  devResetButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#D32F2F",
+    backgroundColor: "#FBE9E7",
+    alignItems: "center",
+  },
+  devResetButtonText: {
+    color: "#D32F2F",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
 
