@@ -2,7 +2,7 @@
   "expo": {
     "name": "リトルベビーログ",
     "slug": "little-baby-log",
-    "version": "1.10.2",
+    "version": "1.11.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "studio.teeda.littlebabylog",
-      "buildNumber": "32",
+      "buildNumber": "33",
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ja_JP",
