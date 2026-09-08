@@ -311,7 +311,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.emptyContainer}>
           <Text style={styles.title}>プロフィールを作成してください</Text>
           <Text style={styles.note}>
-            記録を保存するにはプロフィールが必要です。
+            最初にプロフィール設定から始めましょう
           </Text>
           <View style={styles.buttonRow}>
             <TouchableOpacity
