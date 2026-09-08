@@ -1,7 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Button,
   Image,
   Linking,
   Modal,
@@ -314,7 +313,12 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.note}>
             記録を保存するにはプロフィールが必要です。
           </Text>
-          <Button title="戻る" onPress={() => navigation.goBack()} />
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.navButtonText}>戻る</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -563,6 +567,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: "center",
+  },
+  navButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: COLORS.filterBackground,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  navButtonText: {
+    color: COLORS.textPrimary,
+    fontWeight: "600",
+    fontSize: 14,
   },
   field: {
     gap: 10,
