@@ -8,6 +8,11 @@ jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
 }));
 
+jest.mock("@react-navigation/native", () => ({
+  ...jest.requireActual("@react-navigation/native"),
+  useNavigation: () => ({ navigate: jest.fn() }),
+}));
+
 jest.mock("@/components/AppText", () => {
   const React = require("react");
   const { Text } = require("react-native");

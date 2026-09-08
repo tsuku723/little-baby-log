@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "studio.teeda.littlebabylog",
-      "buildNumber": "33",
+      "buildNumber": "34",
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ja_JP",
