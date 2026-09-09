@@ -124,6 +124,8 @@ const PhotoCropModal: React.FC<Props> = ({
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
+        .minPointers(1)
+        .maxPointers(1)
         .onStart(() => {
           panStart.value = { x: translateX.value, y: translateY.value };
         })
