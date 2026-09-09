@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { RootStackParamList } from "@/navigation";
 import AppText from "@/components/AppText";
+import Button from "@/components/Button";
 import DatePickerModal from "@/components/DatePickerModal";
 import PhotoCropModal from "@/components/PhotoCropModal";
 import { useActiveUser } from "@/state/AppStateContext";
@@ -457,31 +458,19 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </ScrollView>
       <View style={styles.fixedActions}>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            styles.fixedActionButton,
-            styles.saveButton,
-          ]}
+        <Button
+          variant="primary"
+          style={styles.fixedActionButton}
+          title="保存"
           onPress={handleSave}
-          accessibilityRole="button"
-        >
-          <Text style={styles.actionButtonText}>保存</Text>
-        </TouchableOpacity>
+        />
         {editingRecord ? (
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.fixedActionButton,
-              styles.deleteButton,
-            ]}
+          <Button
+            variant="danger"
+            style={styles.fixedActionButton}
+            title="この記録を削除"
             onPress={confirmDelete}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-              この記録を削除
-            </Text>
-          </TouchableOpacity>
+          />
         ) : null}
       </View>
       <Modal
@@ -716,9 +705,6 @@ const styles = StyleSheet.create({
   fixedActionButton: {
     width: "100%",
   },
-  saveButton: {
-    alignSelf: "center",
-  },
   /* 記録入力ヘッダー */
   header: {
     flexDirection: "row",
@@ -747,13 +733,6 @@ const styles = StyleSheet.create({
   headerCancel: {
     fontSize: 16,
     color: COLORS.textPrimary,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.sunday,
-    borderColor: COLORS.sunday,
-  },
-  deleteButtonText: {
-    color: COLORS.surface,
   },
   sheetOverlay: {
     flex: 1,
