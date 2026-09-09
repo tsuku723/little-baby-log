@@ -2,6 +2,7 @@ import React from "react";
 import renderer, { act } from "react-test-renderer";
 
 const mockSetActiveUser = jest.fn().mockResolvedValue(undefined);
+const mockRestoreState = jest.fn().mockResolvedValue(undefined);
 let mockAppState: any = { users: [], activeUserId: null, achievements: {} };
 
 jest.mock("@expo/vector-icons", () => ({
@@ -22,6 +23,7 @@ jest.mock("@/state/AppStateContext", () => ({
   useAppState: () => ({
     state: mockAppState,
     setActiveUser: mockSetActiveUser,
+    restoreState: mockRestoreState,
   }),
 }));
 
@@ -216,5 +218,45 @@ describe("SettingsScreen UI (TS-UI-008)", () => {
     });
     const json = JSON.stringify(tree.toJSON());
     expect(json).toContain("保存に失敗しました");
+  });
+
+  test("開発用: 全データを削除ボタンが表示される", async () => {
+    const SettingsScreen = require("../src/screens/SettingsScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(SettingsScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain("全データを削除（テスト用）");
+  });
+
+  test("開発用: 削除確認ダイアログで「削除する」を選ぶと restoreState が空データで呼ばれる", async () => {
+    const alertSpy = jest
+      .spyOn(require("react-native").Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        const confirmButton = buttons?.find((b: any) => b.text === "削除する");
+        confirmButton?.onPress?.();
+      });
+    const SettingsScreen = require("../src/screens/SettingsScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(SettingsScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const resetButton = tree.root.findByProps({ testID: "dev-reset-button" });
+    await act(async () => {
+      resetButton.props.onPress();
+    });
+    expect(mockRestoreState).toHaveBeenCalledWith([], {});
+    alertSpy.mockRestore();
   });
 });

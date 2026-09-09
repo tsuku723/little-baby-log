@@ -21,8 +21,9 @@ export function groupRecordsByMonth(records: Achievement[]): RecordSection[] {
   }
 
   return Array.from(sectionMap.entries()).map(([monthKey, monthRecords]) => {
+    const year = parseInt(monthKey.slice(0, 4), 10);
     const month = parseInt(monthKey.slice(5), 10);
-    const monthLabel = `${month}月`;
+    const monthLabel = `${year}年${month}月`;
     const featured = monthRecords.find((r) => r.photoPath) ?? null;
     return {
       monthKey,

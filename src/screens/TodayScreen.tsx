@@ -349,6 +349,7 @@ const TodayScreen: React.FC<Props> = ({
                   screen: "ProfileManager",
                 })
               }
+              accessibilityRole="button"
             >
               <Text style={styles.navButtonText}>設定へ</Text>
             </TouchableOpacity>
@@ -371,6 +372,7 @@ const TodayScreen: React.FC<Props> = ({
                 screen: "ProfileManager",
               })
             }
+            accessibilityRole="button"
           >
             <Text style={styles.navButtonText}>プロフィールを編集</Text>
           </TouchableOpacity>

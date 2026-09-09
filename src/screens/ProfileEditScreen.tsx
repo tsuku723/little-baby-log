@@ -216,11 +216,13 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleCropConfirm = async (cropRect: CropRect) => {
     if (!pendingCropSource) return;
     try {
-      const newPath = await saveCroppedProfilePhotoAsync(
-        pendingCropSource.uri,
-        cropRect
-      );
-      await applyNewProfilePhoto(newPath);
+      const prev = formState.profilePhotoPath;
+      const shouldDeletePrev = prev && prev !== existing?.profilePhotoPath;
+      const [newPath] = await Promise.all([
+        saveCroppedProfilePhotoAsync(pendingCropSource.uri, cropRect),
+        shouldDeletePrev ? deleteIfExistsAsync(prev) : null,
+      ]);
+      setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
     } catch (error) {
       console.error("Failed to save cropped profile photo", error);
       Alert.alert("写真の追加に失敗しました", "再度お試しください。");

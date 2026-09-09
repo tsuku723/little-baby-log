@@ -1,7 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Button,
   Image,
   Linking,
   Modal,
@@ -199,9 +198,17 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleCropConfirm = async (cropRect: CropRect) => {
     if (!pendingCropSource) return;
+    const previousTempPhoto =
+      photoPath && photoPath !== editingRecord?.photoPath ? photoPath : null;
     try {
-      const next = await saveCroppedPhotoAsync(pendingCropSource.uri, cropRect);
-      await applyNewPhoto(next);
+      const [next] = await Promise.all([
+        saveCroppedPhotoAsync(pendingCropSource.uri, cropRect),
+        // 編集画面で選び直した未保存の写真は不要になるためクリーンアップする
+        previousTempPhoto ? deleteIfExistsAsync(previousTempPhoto) : null,
+      ]);
+
+      setPhotoPath(next);
+      setHasRemovedPhoto(false);
     } catch (error) {
       console.error("Failed to save cropped photo", error);
       Alert.alert("写真の追加に失敗しました", "再度お試しください。");
@@ -315,15 +322,29 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   if (!user) {
-    // プロフィールが無い場合は案内のみ表示して戻る
+    // プロフィールが無い場合は案内のみ表示する(TodayScreenと同じ導線)
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centered}>
+        <View style={styles.emptyContainer}>
           <Text style={styles.title}>プロフィールを作成してください</Text>
           <Text style={styles.note}>
-            記録を保存するにはプロフィールが必要です。
+            最初にプロフィール設定から始めましょう
           </Text>
-          <Button title="戻る" onPress={() => navigation.goBack()} />
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              testID="empty-settings-button"
+              style={styles.navButton}
+              onPress={() =>
+                navigation.navigate("MainTabs", {
+                  screen: "SettingsStack",
+                  params: { screen: "ProfileManager" },
+                })
+              }
+              accessibilityRole="button"
+            >
+              <Text style={styles.navButtonText}>設定へ</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -556,22 +577,37 @@ const styles = StyleSheet.create({
     gap: 20,
     paddingBottom: 140,
   },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
+  emptyContainer: {
+    flexGrow: 1,
     padding: 24,
+    gap: 16,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
     color: COLORS.textPrimary,
   },
   note: {
+    fontSize: 16,
+    color: COLORS.textPrimary,
+  },
+  buttonRow: {
+    marginTop: 12,
+  },
+  navButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: COLORS.filterBackground,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  navButtonText: {
+    color: COLORS.textPrimary,
+    fontWeight: "600",
     fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: "center",
   },
   field: {
     gap: 10,
