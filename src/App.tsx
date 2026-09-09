@@ -1,6 +1,7 @@
 import React from "react";
 import { StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import {
   useFonts,
@@ -24,16 +25,18 @@ const App: React.FC = () => {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar barStyle="dark-content" />
-      <AppStateProvider>
-        <AchievementsProvider>
-          <TrackingReadyProvider value={isTrackingReady}>
-            <Navigator />
-          </TrackingReadyProvider>
-        </AchievementsProvider>
-      </AppStateProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <StatusBar barStyle="dark-content" />
+        <AppStateProvider>
+          <AchievementsProvider>
+            <TrackingReadyProvider value={isTrackingReady}>
+              <Navigator />
+            </TrackingReadyProvider>
+          </AchievementsProvider>
+        </AppStateProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 };
 
