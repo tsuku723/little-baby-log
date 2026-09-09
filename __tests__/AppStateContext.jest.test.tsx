@@ -1024,6 +1024,61 @@ describe("AppStateContext", () => {
     expect(activeGrowthRecords).toEqual([]);
   });
 
+  test("ensureStateIntegrity drops malformed growthRecords (non-array bucket / missing date)", async () => {
+    const validRecord = {
+      id: "g1",
+      date: "2025-02-01",
+      weightKg: 3.2,
+      createdAt: "t",
+    };
+    mockGetItem.mockResolvedValueOnce(
+      JSON.stringify({
+        users: [
+          {
+            id: "u1",
+            name: "A",
+            birthDate: "2025-01-01",
+            dueDate: null,
+            settings,
+            createdAt: "t",
+          },
+          {
+            id: "u2",
+            name: "B",
+            birthDate: "2025-01-01",
+            dueDate: null,
+            settings,
+            createdAt: "t",
+          },
+        ],
+        activeUserId: "u1",
+        achievements: { u1: [], u2: [] },
+        growthRecords: {
+          u1: [validRecord, { id: "broken" }, "x", null],
+          u2: { not: "an array" },
+        },
+      })
+    );
+
+    let captured: ReturnType<typeof useAppState> | null = null;
+    const Probe = () => {
+      captured = useAppState();
+      return <Text>ok</Text>;
+    };
+
+    render(
+      <AppStateProvider>
+        <Probe />
+      </AppStateProvider>
+    );
+    await waitFor(() => expect(captured?.loading).toBe(false));
+
+    expect(captured!.state.growthRecords).toEqual({
+      u1: [validRecord],
+      u2: [],
+    });
+  });
+
   test("add/update/delete growth record and deleteUser removes bucket", async () => {
     mockGetItem.mockResolvedValueOnce(
       JSON.stringify({

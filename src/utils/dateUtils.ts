@@ -279,14 +279,22 @@ export const toDecimalMonths = (
 
 /**
  * 成長記録グラフ用の修正月齢（小数）を返す。
- * dueDate があればそれを起点、無ければ birthDate を起点にする単純化ロジック。
+ * calculateAgeInfo と同じ早産判定（在胎259日未満）のときのみ dueDate を起点にし、
+ * 正期産（dueDate 未設定・または在胎37週以上）は birthDate 起点の暦月齢を返す。
  */
 export const toCorrectedDecimalMonthsForGrowth = (params: {
   targetDate: string;
   birthDate: string;
   dueDate: string | null;
 }): number => {
-  const anchor = params.dueDate ?? params.birthDate;
+  const birth = normalizeToUtcDate(params.birthDate);
+  const due = params.dueDate ? normalizeToUtcDate(params.dueDate) : null;
+  const isPreterm =
+    due !== null &&
+    !Number.isNaN(due.getTime()) &&
+    !Number.isNaN(birth.getTime()) &&
+    280 - daysBetweenUtc(birth, due) < 259;
+  const anchor = isPreterm ? params.dueDate! : params.birthDate;
   return toDecimalMonths(anchor, params.targetDate);
 };
 
@@ -465,7 +473,9 @@ export const buildCalendarMonthView = ({
       calendarAgeLabel,
       achievementCount: achievementCountsByDay?.[iso] ?? 0,
       hasAchievements: (achievementCountsByDay?.[iso] ?? 0) > 0,
-      hasGrowthRecords: growthRecordDatesSet?.has(iso) ?? false,
+      // 実績マーク（当月分のみ集計）と揃えるため、隣接月のセルには表示しない
+      hasGrowthRecords:
+        isCurrentMonth && (growthRecordDatesSet?.has(iso) ?? false),
       milestoneBadge,
     });
 

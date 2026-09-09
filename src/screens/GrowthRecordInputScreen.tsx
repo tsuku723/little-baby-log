@@ -37,15 +37,15 @@ type WeightUnit = "kg" | "g";
 const MIN_DATE = new Date(1900, 0, 1);
 const MAX_DATE = new Date(2100, 11, 31);
 
-// 小数第n位までに丸めた数値文字列を返す。空文字は undefined を返す。
+// 小数第n位までに丸めた数値を返す。空文字は undefined、数値として不正（"3.5.0" や 0以下）なら null。
 const parseDecimal = (
   text: string,
   fractionDigits: number
-): number | undefined => {
+): number | undefined | null => {
   const trimmed = text.trim();
   if (!trimmed) return undefined;
   const value = Number(trimmed);
-  if (Number.isNaN(value)) return undefined;
+  if (!Number.isFinite(value) || value <= 0) return null;
   const factor = 10 ** fractionDigits;
   return Math.round(value * factor) / factor;
 };
@@ -125,15 +125,30 @@ const GrowthRecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     const rawWeight = parseDecimal(weightText, weightUnit === "kg" ? 3 : 0);
+    const heightCm = parseDecimal(heightText, 1);
+    const headCircumferenceCm = parseDecimal(headText, 1);
+    const chestCircumferenceCm = parseDecimal(chestText, 1);
+
+    const invalidLabels = [
+      rawWeight === null ? "体重" : null,
+      heightCm === null ? "身長" : null,
+      headCircumferenceCm === null ? "頭囲" : null,
+      chestCircumferenceCm === null ? "胸囲" : null,
+    ].filter((label): label is string => label !== null);
+    if (invalidLabels.length > 0) {
+      Alert.alert(
+        "入力値を確認してください",
+        `${invalidLabels.join("・")}に正しい数値（0より大きい値）を入力してください。`
+      );
+      return;
+    }
+
     const weightKg =
       rawWeight == null
         ? undefined
         : weightUnit === "kg"
           ? rawWeight
           : Math.round((rawWeight / 1000) * 1000) / 1000;
-    const heightCm = parseDecimal(heightText, 1);
-    const headCircumferenceCm = parseDecimal(headText, 1);
-    const chestCircumferenceCm = parseDecimal(chestText, 1);
 
     if (
       weightKg == null &&
@@ -152,9 +167,9 @@ const GrowthRecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
       id: editingRecord?.id,
       date: toIsoDateString(recordDate),
       weightKg,
-      heightCm,
-      headCircumferenceCm,
-      chestCircumferenceCm,
+      heightCm: heightCm ?? undefined,
+      headCircumferenceCm: headCircumferenceCm ?? undefined,
+      chestCircumferenceCm: chestCircumferenceCm ?? undefined,
     };
 
     try {

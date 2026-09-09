@@ -164,9 +164,13 @@ const ensureStateIntegrity = (state: AppState): AppState => {
     nextState.achievements[user.id] =
       nextState.achievements[user.id].map(normalizeAchievement);
 
-    if (!nextState.growthRecords[user.id]) {
-      nextState.growthRecords[user.id] = [];
-    }
+    // バックアップ由来の不正な形（配列でない・date 欠損）は描画時に例外になるため除去する
+    const growthBucket = nextState.growthRecords[user.id];
+    nextState.growthRecords[user.id] = Array.isArray(growthBucket)
+      ? growthBucket.filter(
+          (r) => typeof r?.id === "string" && typeof r?.date === "string"
+        )
+      : [];
   });
 
   // 旧バージョンのデータには notifyMilestoneEnabled / gender が存在しないため補完する
