@@ -70,6 +70,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const uri = await createBackup(state.users, state.achievements);
       await Sharing.shareAsync(uri);
+      Alert.alert("完了", "バックアップを作成しました");
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "不明なエラーが発生しました";
