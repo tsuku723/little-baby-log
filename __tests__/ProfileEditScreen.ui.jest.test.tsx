@@ -23,16 +23,46 @@ jest.mock("@/components/DatePickerModal", () => ({
   default: () => null,
 }));
 
-jest.mock("@/components/PhotoCropModal", () => ({
-  __esModule: true,
-  default: () => null,
-}));
+jest.mock("@/components/PhotoCropModal", () => {
+  const React = require("react");
+  const { View, TouchableOpacity, Text } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ onConfirm, onCancel }: any) =>
+      React.createElement(
+        View,
+        { testID: "photo-crop-modal" },
+        React.createElement(
+          TouchableOpacity,
+          {
+            testID: "crop-confirm",
+            accessibilityRole: "button",
+            onPress: () => onConfirm({ x: 0, y: 0, width: 10, height: 10 }),
+          },
+          React.createElement(Text, null, "crop-confirm")
+        ),
+        React.createElement(
+          TouchableOpacity,
+          {
+            testID: "crop-cancel",
+            accessibilityRole: "button",
+            onPress: onCancel,
+          },
+          React.createElement(Text, null, "crop-cancel")
+        )
+      ),
+  };
+});
+
+const mockPickPhotoAsync = jest.fn().mockResolvedValue(null);
+const mockSaveCroppedProfilePhotoAsync = jest.fn().mockResolvedValue(null);
+const mockDeleteIfExistsAsync = jest.fn().mockResolvedValue(undefined);
 
 jest.mock("@/utils/photo", () => ({
   PhotoPermissionDeniedError: class PhotoPermissionDeniedError extends Error {},
-  pickPhotoAsync: jest.fn().mockResolvedValue(null),
-  saveCroppedProfilePhotoAsync: jest.fn().mockResolvedValue(null),
-  deleteIfExistsAsync: jest.fn().mockResolvedValue(undefined),
+  pickPhotoAsync: mockPickPhotoAsync,
+  saveCroppedProfilePhotoAsync: mockSaveCroppedProfilePhotoAsync,
+  deleteIfExistsAsync: mockDeleteIfExistsAsync,
   resolvePhotoPath: (path: string) => path,
 }));
 
@@ -75,6 +105,15 @@ describe("ProfileEditScreen UI (TS-UI-009)", () => {
       setOptions: jest.fn(),
       navigate: mockParentNavigate,
     });
+    mockPickPhotoAsync.mockResolvedValue({
+      uri: "file://picked.jpg",
+      width: 100,
+      height: 100,
+    });
+    mockSaveCroppedProfilePhotoAsync.mockResolvedValue(
+      "profile-photos/new.jpg"
+    );
+    mockDeleteIfExistsAsync.mockResolvedValue(undefined);
   });
 
   test("新規プロフィール（profileId なし）: 「新しいこどもを追加」を表示", async () => {
@@ -349,5 +388,136 @@ describe("ProfileEditScreen UI (TS-UI-009)", () => {
 
     expect(mockNavigation.goBack).toHaveBeenCalled();
     expect(mockParentNavigate).not.toHaveBeenCalled();
+  });
+
+  test("初回の写真設定時は保存のみ行われ、削除は呼ばれない", async () => {
+    mockAppState = { users: [], activeUserId: null };
+    const routeNew = { params: {} };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route: routeNew,
+        })
+      );
+    });
+
+    await act(async () => {
+      tree.root
+        .findByProps({ accessibilityLabel: "プロフィール写真を選択" })
+        .props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+
+    expect(mockSaveCroppedProfilePhotoAsync).toHaveBeenCalledWith(
+      "file://picked.jpg",
+      { x: 0, y: 0, width: 10, height: 10 }
+    );
+    expect(mockDeleteIfExistsAsync).not.toHaveBeenCalled();
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).not.toContain("photo-crop-modal");
+  });
+
+  test("写真を選び直すと、保存と旧写真の削除が両方行われる", async () => {
+    const existingUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      profilePhotoPath: "profile-photos/old.jpg",
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd" as const,
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
+      },
+    };
+    mockAppState = { users: [existingUser], activeUserId: "u1" };
+    const route = { params: { profileId: "u1" } };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+
+    // 1回目: 既存プロフィール写真と同じパスのため削除は呼ばれない
+    mockSaveCroppedProfilePhotoAsync.mockResolvedValueOnce(
+      "profile-photos/new1.jpg"
+    );
+    await act(async () => {
+      tree.root
+        .findByProps({ accessibilityLabel: "プロフィール写真を選択" })
+        .props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+    expect(mockDeleteIfExistsAsync).not.toHaveBeenCalled();
+
+    // 2回目: 直前に保存した一時写真(new1.jpg)が不要になるため削除される
+    mockSaveCroppedProfilePhotoAsync.mockResolvedValueOnce(
+      "profile-photos/new2.jpg"
+    );
+    await act(async () => {
+      tree.root
+        .findByProps({ accessibilityLabel: "プロフィール写真を選択" })
+        .props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+
+    expect(mockSaveCroppedProfilePhotoAsync).toHaveBeenCalledTimes(2);
+    expect(mockDeleteIfExistsAsync).toHaveBeenCalledWith(
+      "profile-photos/new1.jpg"
+    );
+  });
+
+  test("保存に失敗した場合、写真は更新されずエラーが表示される", async () => {
+    mockAppState = { users: [], activeUserId: null };
+    const routeNew = { params: {} };
+    mockSaveCroppedProfilePhotoAsync.mockRejectedValueOnce(
+      new Error("save failed")
+    );
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route: routeNew,
+        })
+      );
+    });
+
+    await act(async () => {
+      tree.root
+        .findByProps({ accessibilityLabel: "プロフィール写真を選択" })
+        .props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).not.toContain("photo-crop-modal");
+    consoleErrorSpy.mockRestore();
   });
 });
