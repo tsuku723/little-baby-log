@@ -29,12 +29,15 @@ export type UserSettings = {
   notifyMilestoneEnabled: boolean;
 };
 
+export type Gender = "male" | "female";
+
 export type UserProfile = {
   id: string;
   name: string;
   birthDate: string;
   dueDate: string | null;
   profilePhotoPath?: string;
+  gender: Gender | null;
   settings: UserSettings;
   createdAt: string;
 };
@@ -51,10 +54,22 @@ export type Achievement = {
   updatedAt?: string;
 };
 
+export type GrowthRecord = {
+  id: string;
+  date: string; // normalized ISO "YYYY-MM-DD"
+  weightKg?: number; // 小数第3位まで
+  heightCm?: number; // 小数第1位まで
+  headCircumferenceCm?: number; // 小数第1位まで
+  chestCircumferenceCm?: number; // 小数第1位まで
+  createdAt: string;
+  updatedAt?: string;
+};
+
 export type AppState = {
   users: UserProfile[];
   activeUserId: string | null;
   achievements: Record<string, Achievement[]>;
+  growthRecords: Record<string, GrowthRecord[]>;
 };
 
 type NewUserInput = Omit<UserProfile, "id" | "createdAt"> & {
@@ -81,9 +96,17 @@ type AppStateContextValue = {
     partial: Partial<Achievement>
   ) => Promise<void>;
   deleteAchievement: (userId: string, id: string) => Promise<void>;
+  addGrowthRecord: (userId: string, record: GrowthRecord) => Promise<void>;
+  updateGrowthRecord: (
+    userId: string,
+    id: string,
+    partial: Partial<GrowthRecord>
+  ) => Promise<void>;
+  deleteGrowthRecord: (userId: string, id: string) => Promise<void>;
   restoreState: (
     profiles: UserProfile[],
-    achievements: Record<string, Achievement[]>
+    achievements: Record<string, Achievement[]>,
+    growthRecords: Record<string, GrowthRecord[]>
   ) => Promise<void>;
 };
 
@@ -95,6 +118,7 @@ const EMPTY_STATE: AppState = {
   users: [],
   activeUserId: null,
   achievements: {},
+  growthRecords: {},
 };
 
 const AppStateContext = createContext<AppStateContextValue | undefined>(
@@ -123,6 +147,7 @@ const ensureStateIntegrity = (state: AppState): AppState => {
     users: state.users ?? [],
     activeUserId: state.activeUserId ?? null,
     achievements: state.achievements ?? {},
+    growthRecords: state.growthRecords ?? {},
   };
 
   if (
@@ -138,11 +163,16 @@ const ensureStateIntegrity = (state: AppState): AppState => {
     }
     nextState.achievements[user.id] =
       nextState.achievements[user.id].map(normalizeAchievement);
+
+    if (!nextState.growthRecords[user.id]) {
+      nextState.growthRecords[user.id] = [];
+    }
   });
 
-  // 旧バージョンのデータには notifyMilestoneEnabled が存在しないため補完する
+  // 旧バージョンのデータには notifyMilestoneEnabled / gender が存在しないため補完する
   nextState.users = nextState.users.map((user) => ({
     ...user,
+    gender: user.gender ?? null,
     settings: {
       ...user.settings,
       notifyMilestoneEnabled: user.settings?.notifyMilestoneEnabled ?? false,
@@ -176,6 +206,7 @@ const migrateLegacyState = async (): Promise<AppState | null> => {
     birthDate:
       legacySettings?.birthDate || new Date().toISOString().slice(0, 10),
     dueDate: legacySettings?.dueDate ?? null,
+    gender: null,
     settings: {
       showCorrectedUntilMonths: legacySettings?.showCorrectedUntilMonths ?? 24,
       ageFormat: legacySettings?.ageFormat ?? "ymd",
@@ -215,6 +246,7 @@ const migrateLegacyState = async (): Promise<AppState | null> => {
     users: [profile],
     activeUserId: userId,
     achievements: { [userId]: migratedAchievements },
+    growthRecords: { [userId]: [] },
   };
 
   await AsyncStorage.removeItem(STORAGE_KEYS.userSettings);
@@ -316,18 +348,21 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
           birthDate: input.birthDate,
           dueDate: input.dueDate,
           profilePhotoPath: input.profilePhotoPath,
+          gender: input.gender ?? null,
           settings: input.settings,
           createdAt,
         };
 
         const nextUsers = [...prev.users, profile];
         const nextAchievements = { ...prev.achievements, [userId]: [] };
+        const nextGrowthRecords = { ...prev.growthRecords, [userId]: [] };
         const nextActive = prev.activeUserId ?? userId;
 
         return {
           users: nextUsers,
           activeUserId: nextActive,
           achievements: nextAchievements,
+          growthRecords: nextGrowthRecords,
         };
       });
     },
@@ -368,6 +403,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
         const nextUsers = prev.users.filter((user) => user.id !== userId);
         const nextAchievements = { ...prev.achievements };
         delete nextAchievements[userId];
+        const nextGrowthRecords = { ...prev.growthRecords };
+        delete nextGrowthRecords[userId];
 
         let nextActive: string | null = prev.activeUserId;
         if (prev.activeUserId === userId) {
@@ -378,6 +415,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
           users: nextUsers,
           activeUserId: nextActive,
           achievements: nextAchievements,
+          growthRecords: nextGrowthRecords,
         };
       });
     },
@@ -440,16 +478,64 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
     [updateState]
   );
 
+  const addGrowthRecord = useCallback(
+    async (userId: string, record: GrowthRecord) => {
+      await updateState((prev) => {
+        const current = prev.growthRecords[userId] ?? [];
+        return {
+          ...prev,
+          growthRecords: {
+            ...prev.growthRecords,
+            [userId]: [...current, record],
+          },
+        };
+      });
+    },
+    [updateState]
+  );
+
+  const updateGrowthRecord = useCallback(
+    async (userId: string, id: string, partial: Partial<GrowthRecord>) => {
+      await updateState((prev) => {
+        const current = prev.growthRecords[userId] ?? [];
+        const nextList = current.map((item) =>
+          item.id === id ? { ...item, ...partial, id: item.id } : item
+        );
+        return {
+          ...prev,
+          growthRecords: { ...prev.growthRecords, [userId]: nextList },
+        };
+      });
+    },
+    [updateState]
+  );
+
+  const deleteGrowthRecord = useCallback(
+    async (userId: string, id: string) => {
+      await updateState((prev) => {
+        const current = prev.growthRecords[userId] ?? [];
+        const nextList = current.filter((item) => item.id !== id);
+        return {
+          ...prev,
+          growthRecords: { ...prev.growthRecords, [userId]: nextList },
+        };
+      });
+    },
+    [updateState]
+  );
+
   const restoreState = useCallback(
     async (
       profiles: UserProfile[],
-      achievements: Record<string, Achievement[]>
+      achievements: Record<string, Achievement[]>,
+      growthRecords: Record<string, GrowthRecord[]>
     ) => {
       const previousUserIds = state.users.map((u) => u.id);
       const nextState = ensureStateIntegrity({
         users: profiles,
         activeUserId: profiles[0]?.id ?? null,
         achievements,
+        growthRecords,
       });
 
       setState(nextState);
@@ -478,6 +564,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
       addAchievement,
       updateAchievement,
       deleteAchievement,
+      addGrowthRecord,
+      updateGrowthRecord,
+      deleteGrowthRecord,
       restoreState,
     }),
     [
@@ -490,6 +579,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
       addAchievement,
       updateAchievement,
       deleteAchievement,
+      addGrowthRecord,
+      updateGrowthRecord,
+      deleteGrowthRecord,
       restoreState,
     ]
   );
@@ -521,4 +613,10 @@ export const useAchievements = (): Achievement[] => {
   const { state } = useAppState();
   if (!state.activeUserId) return [];
   return state.achievements[state.activeUserId] ?? [];
+};
+
+export const useGrowthRecords = (): GrowthRecord[] => {
+  const { state } = useAppState();
+  if (!state.activeUserId) return [];
+  return state.growthRecords[state.activeUserId] ?? [];
 };

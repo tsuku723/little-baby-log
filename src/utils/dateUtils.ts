@@ -257,6 +257,39 @@ export const calculateAgeInfo = (params: {
   };
 };
 
+const AVG_DAYS_PER_MONTH = 30.4368; // 365.2425 / 12（グレゴリオ暦平均）
+
+/**
+ * fromIsoDate から toIsoDate までの月齢を小数で返す（成長記録グラフのX軸専用）。
+ * calculateAgeInfo の暦アンカー方式（diffYmdAnchored）とは別軸の単純な日数近似であり、
+ * 意図的に非統合。toDate が fromDate より前の場合は負値を返す。
+ */
+export const toDecimalMonths = (
+  fromIsoDate: string,
+  toIsoDate: string
+): number => {
+  const from = normalizeToUtcDate(fromIsoDate);
+  const to = normalizeToUtcDate(toIsoDate);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    return NaN;
+  }
+  const diffDays = (utcDateMs(to) - utcDateMs(from)) / MS_PER_DAY;
+  return diffDays / AVG_DAYS_PER_MONTH;
+};
+
+/**
+ * 成長記録グラフ用の修正月齢（小数）を返す。
+ * dueDate があればそれを起点、無ければ birthDate を起点にする単純化ロジック。
+ */
+export const toCorrectedDecimalMonthsForGrowth = (params: {
+  targetDate: string;
+  birthDate: string;
+  dueDate: string | null;
+}): number => {
+  const anchor = params.dueDate ?? params.birthDate;
+  return toDecimalMonths(anchor, params.targetDate);
+};
+
 export const monthKey = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -277,12 +310,14 @@ export const buildCalendarMonthView = ({
   birthDate,
   dueDate,
   achievementCountsByDay,
+  growthRecordDatesSet,
 }: {
   anchorDate: Date;
   settings: UserSettings;
   birthDate: string | null;
   dueDate: string | null;
   achievementCountsByDay?: Record<string, number>;
+  growthRecordDatesSet?: Set<string>;
 }): CalendarMonthView => {
   const startDate = startOfCalendarGrid(anchorDate);
   const firstDay = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
@@ -430,6 +465,7 @@ export const buildCalendarMonthView = ({
       calendarAgeLabel,
       achievementCount: achievementCountsByDay?.[iso] ?? 0,
       hasAchievements: (achievementCountsByDay?.[iso] ?? 0) > 0,
+      hasGrowthRecords: growthRecordDatesSet?.has(iso) ?? false,
       milestoneBadge,
     });
 

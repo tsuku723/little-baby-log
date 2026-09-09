@@ -3,7 +3,12 @@ import renderer, { act } from "react-test-renderer";
 
 const mockSetActiveUser = jest.fn().mockResolvedValue(undefined);
 const mockRestoreState = jest.fn().mockResolvedValue(undefined);
-let mockAppState: any = { users: [], activeUserId: null, achievements: {} };
+let mockAppState: any = {
+  users: [],
+  activeUserId: null,
+  achievements: {},
+  growthRecords: {},
+};
 
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
@@ -43,7 +48,12 @@ const mockRoute = { params: {} };
 describe("SettingsScreen UI (TS-UI-008)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAppState = { users: [], activeUserId: null, achievements: {} };
+    mockAppState = {
+      users: [],
+      activeUserId: null,
+      achievements: {},
+      growthRecords: {},
+    };
   });
 
   test("users なし: ベビーを選択セクションを表示", async () => {
@@ -79,6 +89,7 @@ describe("SettingsScreen UI (TS-UI-008)", () => {
       ],
       activeUserId: "u1",
       achievements: {},
+      growthRecords: {},
     };
     const SettingsScreen = require("../src/screens/SettingsScreen").default;
     let tree: any;
@@ -113,6 +124,7 @@ describe("SettingsScreen UI (TS-UI-008)", () => {
       ],
       activeUserId: "u1",
       achievements: {},
+      growthRecords: {},
     };
     const SettingsScreen = require("../src/screens/SettingsScreen").default;
     let tree: any;
@@ -176,7 +188,7 @@ describe("SettingsScreen UI (TS-UI-008)", () => {
     await act(async () => {
       await backupButton.props.onPress();
     });
-    expect(mockCreateBackup).toHaveBeenCalledWith([], {});
+    expect(mockCreateBackup).toHaveBeenCalledWith([], {}, {});
   });
 
   test("バックアップ処理中はボタンが disabled になる", async () => {
@@ -256,7 +268,7 @@ describe("SettingsScreen UI (TS-UI-008)", () => {
     await act(async () => {
       resetButton.props.onPress();
     });
-    expect(mockRestoreState).toHaveBeenCalledWith([], {});
+    expect(mockRestoreState).toHaveBeenCalledWith([], {}, {});
     alertSpy.mockRestore();
   });
 });

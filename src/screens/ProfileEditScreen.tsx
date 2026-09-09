@@ -29,7 +29,7 @@ import PhotoCropModal from "@/components/PhotoCropModal";
 import { COLORS } from "@/constants/colors";
 import { UserSettings } from "@/models/dataModels";
 import { SettingsStackParamList, TabParamList } from "@/navigation";
-import { useAppState } from "@/state/AppStateContext";
+import { Gender, useAppState } from "@/state/AppStateContext";
 import {
   isIsoDateString,
   safeParseIsoLocal,
@@ -57,6 +57,7 @@ type FormState = {
   name: string;
   birthDate: string;
   dueDate: string;
+  gender: Gender | null;
   profilePhotoPath?: string;
 };
 
@@ -64,8 +65,15 @@ const createEmptyForm = (): FormState => ({
   name: "",
   birthDate: toIsoDateString(new Date()),
   dueDate: "",
+  gender: null,
   profilePhotoPath: undefined,
 });
+
+const GENDER_OPTIONS: { label: string; value: Gender | null }[] = [
+  { label: "男の子", value: "male" },
+  { label: "女の子", value: "female" },
+  { label: "未設定", value: null },
+];
 
 const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const { state, addUser, updateUser, deleteUser } = useAppState();
@@ -94,6 +102,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name: existing.name,
         birthDate: existing.birthDate,
         dueDate: existing.dueDate ?? "",
+        gender: existing.gender,
         profilePhotoPath: existing.profilePhotoPath,
       };
     }
@@ -159,6 +168,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name: existing.name,
         birthDate: existing.birthDate,
         dueDate: existing.dueDate ?? "",
+        gender: existing.gender,
         profilePhotoPath: existing.profilePhotoPath,
       });
       setDraftSettings({ ...existing.settings });
@@ -264,6 +274,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name,
         birthDate,
         dueDate,
+        gender: formState.gender,
         profilePhotoPath: profilePhotoPath ?? undefined,
         settings: draftSettings,
       });
@@ -273,6 +284,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name,
         birthDate,
         dueDate,
+        gender: formState.gender,
         profilePhotoPath: profilePhotoPath ?? undefined,
         settings: draftSettings,
       });
@@ -285,6 +297,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name,
         birthDate,
         dueDate,
+        gender: formState.gender,
         settings: draftSettings,
         createdAt: existing?.createdAt ?? new Date().toISOString(),
       });
@@ -468,6 +481,35 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.dateRowLabel}>出産予定日</Text>
             <Text style={styles.dateRowValue}>{formState.dueDate} ▼</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>性別（成長曲線の基準線に使用）</Text>
+          <View style={styles.optionRow}>
+            {GENDER_OPTIONS.map((option) => (
+              <Pressable
+                key={option.label}
+                style={[
+                  styles.optionButton,
+                  formState.gender === option.value &&
+                    styles.optionButtonSelected,
+                ]}
+                onPress={() =>
+                  setFormState((prev) => ({ ...prev, gender: option.value }))
+                }
+              >
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    formState.gender === option.value &&
+                      styles.optionLabelSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <View style={styles.section}>
