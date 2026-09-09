@@ -211,7 +211,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
       // 旧一時ファイルの削除は必ず保存成功後に行う（並列化不可）。
       // 保存失敗時に削除だけが実行されると profilePhotoPath が
       // 存在しないファイルを指したままになる。
-      if (shouldDeletePrev) {
+      if (shouldDeletePrev && prev !== newPath) {
         void deleteIfExistsAsync(prev);
       }
 

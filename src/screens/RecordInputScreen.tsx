@@ -189,7 +189,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
       // 削除は必ず保存成功後に行う（並列化不可）。Promise.all で並列化すると
       // 保存失敗時に旧ファイルだけが消え、photoPath が存在しないファイルを
       // 指したままになる（プレビュー破損・不正パスの永続化）。
-      if (previousTempPhoto) {
+      if (previousTempPhoto && previousTempPhoto !== next) {
         void deleteIfExistsAsync(previousTempPhoto);
       }
 
