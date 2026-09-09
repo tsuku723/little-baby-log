@@ -143,7 +143,7 @@ const GrowthRecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
     ) {
       Alert.alert(
         "記録項目を入力してください",
-        "体重・身長・頭位・胸囲のうち、最低1つを入力してください。"
+        "体重・身長・頭囲・胸囲のうち、最低1つを入力してください。"
       );
       return;
     }
@@ -312,14 +312,14 @@ const GrowthRecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>頭位 (cm)</Text>
+          <Text style={styles.label}>頭囲 (cm)</Text>
           <TextInput
             style={styles.input}
             value={headText}
             onChangeText={setHeadText}
             placeholder="例: 33.0"
             keyboardType="decimal-pad"
-            accessibilityLabel="頭位"
+            accessibilityLabel="頭囲"
           />
         </View>
 
