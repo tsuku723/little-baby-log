@@ -369,4 +369,57 @@ describe("RecordInputScreen UI (TS-UI-005)", () => {
     expect(json).not.toContain("photo-crop-modal");
     consoleErrorSpy.mockRestore();
   });
+
+  test("差し替えの保存に失敗した場合、旧一時ファイルは削除されない", async () => {
+    mockActiveUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd",
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+      },
+    };
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    mockSaveCroppedPhotoAsync.mockResolvedValueOnce(
+      "achievement-photos/new1.jpg"
+    );
+    await act(async () => {
+      findButtonByText(tree.root, "写真を追加").props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+
+    mockSaveCroppedPhotoAsync.mockRejectedValueOnce(new Error("save failed"));
+    await act(async () => {
+      findButtonByText(tree.root, "写真を差し替える").props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+
+    expect(mockDeleteIfExistsAsync).not.toHaveBeenCalled();
+    expect(JSON.stringify(tree.toJSON())).toContain(
+      "achievement-photos/new1.jpg"
+    );
+    consoleErrorSpy.mockRestore();
+  });
 });
