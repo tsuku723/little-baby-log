@@ -24,7 +24,7 @@ describe("groupRecordsByMonth", () => {
     const sections = groupRecordsByMonth(records);
     expect(sections).toHaveLength(1);
     expect(sections[0].monthKey).toBe("2025-11");
-    expect(sections[0].monthLabel).toBe("11月");
+    expect(sections[0].monthLabel).toBe("2025年11月");
     expect(sections[0].featuredId).toBeNull();
     expect(sections[0].records).toHaveLength(1);
   });
@@ -90,9 +90,21 @@ describe("groupRecordsByMonth", () => {
     ]);
   });
 
-  test("monthLabel は「M月」形式（先頭ゼロなし）", () => {
+  test("monthLabel は「YYYY年M月」形式（月は先頭ゼロなし）", () => {
     const records = [makeRecord("a", "2025-01-15")];
     const sections = groupRecordsByMonth(records);
-    expect(sections[0].monthLabel).toBe("1月");
+    expect(sections[0].monthLabel).toBe("2025年1月");
+  });
+
+  test("年をまたぐ同月 — monthLabel で年を判別できる", () => {
+    const records = [
+      makeRecord("a", "2026-05-10"),
+      makeRecord("b", "2025-05-10"),
+    ];
+    const sections = groupRecordsByMonth(records);
+    expect(sections.map((s) => s.monthLabel)).toEqual([
+      "2026年5月",
+      "2025年5月",
+    ]);
   });
 });
