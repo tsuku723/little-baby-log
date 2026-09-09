@@ -8,11 +8,6 @@ jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
 }));
 
-jest.mock("@react-navigation/native", () => ({
-  ...jest.requireActual("@react-navigation/native"),
-  useNavigation: () => ({ navigate: jest.fn() }),
-}));
-
 jest.mock("@/components/AppText", () => {
   const React = require("react");
   const { Text } = require("react-native");
@@ -62,6 +57,7 @@ jest.mock("@/utils/photo", () => ({
 
 const mockNavigation = {
   goBack: jest.fn(),
+  navigate: jest.fn(),
 };
 const mockRoute = { params: {} };
 
@@ -86,6 +82,30 @@ describe("RecordInputScreen UI (TS-UI-005)", () => {
     });
     const json = JSON.stringify(tree.toJSON());
     expect(json).toContain("プロフィールを作成してください");
+  });
+
+  test("user=null: 設定へボタンでプロフィール管理画面へ遷移する", async () => {
+    mockActiveUser = null;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const button = tree.root.findByProps({ testID: "empty-settings-button" });
+    await act(async () => {
+      button.props.onPress();
+    });
+    // RecordInput は RootStack 直下のため、MainTabs 経由でネスト指定しないと遷移しない
+    expect(mockNavigation.navigate).toHaveBeenCalledWith("MainTabs", {
+      screen: "SettingsStack",
+      params: { screen: "ProfileManager" },
+    });
   });
 
   test("新規記録モード: フォームと保存ボタンを表示", async () => {

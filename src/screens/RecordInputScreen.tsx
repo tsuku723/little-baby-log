@@ -17,10 +17,9 @@ import {
 } from "react-native";
 
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { RootStackParamList, TabParamList } from "@/navigation";
+import { RootStackParamList } from "@/navigation";
 import AppText from "@/components/AppText";
 import DatePickerModal from "@/components/DatePickerModal";
 import PhotoCropModal from "@/components/PhotoCropModal";
@@ -51,11 +50,9 @@ import { COLORS } from "@/constants/colors";
 import { logRecordCreated } from "@/services/analytics";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RecordInput">;
-type RootNavigation = NavigationProp<RootStackParamList & TabParamList>;
 
 const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
   const user = useActiveUser();
-  const rootNavigation = useNavigation<RootNavigation>();
   const { store, upsert, remove } = useAchievements();
   const { selectedDate } = useDateViewContext();
 
@@ -318,10 +315,12 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
           </Text>
           <View style={styles.buttonRow}>
             <TouchableOpacity
+              testID="empty-settings-button"
               style={styles.navButton}
               onPress={() =>
-                rootNavigation.navigate("SettingsStack", {
-                  screen: "ProfileManager",
+                navigation.navigate("MainTabs", {
+                  screen: "SettingsStack",
+                  params: { screen: "ProfileManager" },
                 })
               }
               accessibilityRole="button"
