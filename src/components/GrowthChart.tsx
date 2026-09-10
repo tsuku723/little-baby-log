@@ -24,7 +24,7 @@ type Props = {
 };
 
 const CHART_HEIGHT = 260;
-const PADDING = { top: 12, right: 12, bottom: 28, left: 40 };
+const PADDING = { top: 12, right: 12, bottom: 40, left: 40 };
 const STANDARD_SAMPLE_STEP_MONTHS = 0.5;
 
 const MEASUREMENT_FIELD: Record<GrowthMeasurementType, keyof GrowthRecord> = {
@@ -107,6 +107,14 @@ const GrowthChart: React.FC<Props> = ({
       )
       .sort((a, b) => a.months - b.months);
   }, [birthDate, dueDate, field, records]);
+
+  // 0ヶ月にクリップされた記録がある場合、X軸の目盛りに在胎週数を添える
+  const gestationalAxisLabel = useMemo(
+    () =>
+      dataPoints.find((p) => p.gestationalLabel !== null)?.gestationalLabel ??
+      null,
+    [dataPoints]
+  );
 
   const standardPoints = gender
     ? GROWTH_STANDARDS[gender][measurementType]
@@ -322,20 +330,17 @@ const GrowthChart: React.FC<Props> = ({
               strokeWidth={1.5}
             />
           ))}
-          {dataPoints.map((p, index) =>
-            p.gestationalLabel ? (
-              <SvgText
-                key={`pt-label-${index}`}
-                x={scaleX(p.months) + 4}
-                y={scaleY(p.value) - 6}
-                fontSize={9}
-                fill={COLORS.textSecondary}
-                textAnchor="start"
-              >
-                {p.gestationalLabel}
-              </SvgText>
-            ) : null
-          )}
+          {gestationalAxisLabel ? (
+            <SvgText
+              x={scaleX(0)}
+              y={CHART_HEIGHT - PADDING.bottom + 26}
+              fontSize={9}
+              fill={COLORS.textSecondary}
+              textAnchor="middle"
+            >
+              {gestationalAxisLabel}
+            </SvgText>
+          ) : null}
         </Svg>
       ) : null}
       {!hasAnythingToPlot ? (
