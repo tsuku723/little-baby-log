@@ -250,6 +250,7 @@ const GrowthRecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
         style={styles.scroll}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         <View style={styles.field}>
           <TouchableOpacity

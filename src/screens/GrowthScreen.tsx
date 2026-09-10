@@ -41,7 +41,7 @@ const dateLabel = (iso: string): string => iso.replace(/-/g, "/");
 const formatValues = (record: GrowthRecord): string => {
   const parts: string[] = [];
   if (typeof record.weightKg === "number") {
-    parts.push(`体重 ${record.weightKg.toFixed(3)}kg`);
+    parts.push(`体重 ${record.weightKg.toFixed(1)}kg`);
   }
   if (typeof record.heightCm === "number") {
     parts.push(`身長 ${record.heightCm.toFixed(1)}cm`);
