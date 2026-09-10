@@ -195,7 +195,7 @@ const GrowthChart: React.FC<Props> = ({
   for (let v = yMin; v <= yMax + 1e-9; v += yStep) yTicks.push(v);
 
   // X軸の目盛りは実月齢（出生日起点、常に0,1,2...）を主軸にする。
-  // 早産児は出産予定日より前の目盛りにだけ副ラベルとして在胎週数を添える
+  // 早産児は目盛りごとに副ラベルとして、出産予定日前なら在胎週数（30w）、以降なら修正月齢（修1）を添える
   const chronologicalMax = Math.ceil(xMax + offsetMonths);
   const chronStep = chronologicalMax <= 18 ? 1 : chronologicalMax <= 36 ? 3 : 6;
   const xTicks: {
@@ -210,19 +210,20 @@ const GrowthChart: React.FC<Props> = ({
   ) {
     const corrected = chronological - offsetMonths;
     if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
-    const gestational =
-      corrected < -1e-9
-        ? gestationalWeeksAtChronologicalMonths({
-            chronologicalMonths: chronological,
-            birthDate,
-            dueDate,
-          })
-        : null;
-    xTicks.push({
-      chronological,
-      corrected,
-      subLabel: gestational ? `${gestational.weeks}週` : null,
-    });
+    let subLabel: string | null = null;
+    if (offsetMonths > 1e-9) {
+      if (corrected < -1e-9) {
+        const gestational = gestationalWeeksAtChronologicalMonths({
+          chronologicalMonths: chronological,
+          birthDate,
+          dueDate,
+        });
+        subLabel = gestational ? `${gestational.weeks}w` : null;
+      } else {
+        subLabel = `修${Math.round(corrected)}`;
+      }
+    }
+    xTicks.push({ chronological, corrected, subLabel });
   }
 
   const hasAnythingToPlot = dataPoints.length > 0 || standardLines !== null;
