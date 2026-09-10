@@ -24,7 +24,7 @@ type Props = {
   dueDate: string | null;
 };
 
-const CHART_HEIGHT = 260;
+const CHART_HEIGHT = 320;
 const PADDING = { top: 12, right: 12, bottom: 40, left: 40 };
 const STANDARD_SAMPLE_STEP_MONTHS = 0.5;
 
@@ -33,6 +33,18 @@ const MEASUREMENT_FIELD: Record<GrowthMeasurementType, keyof GrowthRecord> = {
   height: "heightCm",
   headCircumference: "headCircumferenceCm",
   chestCircumference: "chestCircumferenceCm",
+};
+
+// Y軸の最低表示範囲。母子健康手帳の0〜1歳の発育曲線に合わせ、
+// 記録が少なくても一般的な成長グラフと同じスケール感で見えるようにする
+const BASE_Y_RANGE: Record<
+  GrowthMeasurementType,
+  { min: number; max: number }
+> = {
+  weight: { min: 0, max: 12 },
+  height: { min: 40, max: 90 },
+  headCircumference: { min: 30, max: 50 },
+  chestCircumference: { min: 30, max: 50 },
 };
 
 const STANDARD_LINE_COLOR = "#B8C7BE";
@@ -160,16 +172,15 @@ const GrowthChart: React.FC<Props> = ({
       values.push(...standardLines.sd30Lower.map((p) => p.value));
       values.push(...standardLines.sd2Upper.map((p) => p.value));
     }
-    if (values.length === 0) return { yMin: 0, yMax: 10 };
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || Math.abs(max) || 1;
-    const step = niceStep(range);
+    const base = BASE_Y_RANGE[measurementType];
+    if (values.length === 0) return { yMin: base.min, yMax: base.max };
+    // 基準範囲に収まらない値がある場合だけ、きりの良い目盛りまで広げる
+    const step = niceStep(base.max - base.min);
     return {
-      yMin: Math.floor((min - range * 0.1) / step) * step,
-      yMax: Math.ceil((max + range * 0.1) / step) * step,
+      yMin: Math.min(base.min, Math.floor(Math.min(...values) / step) * step),
+      yMax: Math.max(base.max, Math.ceil(Math.max(...values) / step) * step),
     };
-  }, [dataPoints, standardLines]);
+  }, [dataPoints, measurementType, standardLines]);
 
   const plotWidth = Math.max(0, width - PADDING.left - PADDING.right);
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
@@ -184,7 +195,7 @@ const GrowthChart: React.FC<Props> = ({
   for (let v = yMin; v <= yMax + 1e-9; v += yStep) yTicks.push(v);
 
   // X軸の目盛りは実月齢（出生日起点、常に0,1,2...）を主軸にする。
-  // 早産児は目盛りごとに副ラベルとして、出産予定日前なら在胎週数、以降なら修正月齢を添える
+  // 早産児は出産予定日より前の目盛りにだけ副ラベルとして在胎週数を添える
   const chronologicalMax = Math.ceil(xMax + offsetMonths);
   const chronStep = chronologicalMax <= 18 ? 1 : chronologicalMax <= 36 ? 3 : 6;
   const xTicks: {
@@ -199,20 +210,19 @@ const GrowthChart: React.FC<Props> = ({
   ) {
     const corrected = chronological - offsetMonths;
     if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
-    let subLabel: string | null = null;
-    if (offsetMonths > 1e-9) {
-      if (corrected < -1e-9) {
-        const gestational = gestationalWeeksAtChronologicalMonths({
-          chronologicalMonths: chronological,
-          birthDate,
-          dueDate,
-        });
-        subLabel = gestational ? `${gestational.weeks}w` : null;
-      } else {
-        subLabel = `修正${Math.round(corrected)}`;
-      }
-    }
-    xTicks.push({ chronological, corrected, subLabel });
+    const gestational =
+      corrected < -1e-9
+        ? gestationalWeeksAtChronologicalMonths({
+            chronologicalMonths: chronological,
+            birthDate,
+            dueDate,
+          })
+        : null;
+    xTicks.push({
+      chronological,
+      corrected,
+      subLabel: gestational ? `${gestational.weeks}週` : null,
+    });
   }
 
   const hasAnythingToPlot = dataPoints.length > 0 || standardLines !== null;
