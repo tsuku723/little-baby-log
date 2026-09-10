@@ -24,7 +24,7 @@ type Props = {
 };
 
 const CHART_HEIGHT = 260;
-const PADDING = { top: 12, right: 12, bottom: 40, left: 40 };
+const PADDING = { top: 12, right: 12, bottom: 28, left: 40 };
 const STANDARD_SAMPLE_STEP_MONTHS = 0.5;
 
 const MEASUREMENT_FIELD: Record<GrowthMeasurementType, keyof GrowthRecord> = {
@@ -69,8 +69,8 @@ const GrowthChart: React.FC<Props> = ({
 
   const field = MEASUREMENT_FIELD[measurementType];
 
-  // 実測値: 修正月齢が負（出産予定日前）の場合は0ヶ月にクリップし、
-  // クリップした点には在胎週数ラベル（例: 30w）を添えて元の時期が分かるようにする
+  // 実測値: 修正月齢は出産予定日前ならマイナス値のまま実際の間隔通りにプロットする。
+  // 出産予定日前の点には在胎週数ラベル（例: 30w）を添えて時期を分かりやすくする
   const dataPoints = useMemo(() => {
     return records
       .map((record) => {
@@ -91,7 +91,7 @@ const GrowthChart: React.FC<Props> = ({
               })
             : null;
         return {
-          months: Math.max(0, months),
+          months,
           value,
           gestationalLabel: gestational ? `${gestational.weeks}w` : null,
         };
@@ -108,20 +108,12 @@ const GrowthChart: React.FC<Props> = ({
       .sort((a, b) => a.months - b.months);
   }, [birthDate, dueDate, field, records]);
 
-  // 0ヶ月にクリップされた記録がある場合、X軸の目盛りに在胎週数を添える
-  const gestationalAxisLabel = useMemo(
-    () =>
-      dataPoints.find((p) => p.gestationalLabel !== null)?.gestationalLabel ??
-      null,
-    [dataPoints]
-  );
-
   const standardPoints = gender
     ? GROWTH_STANDARDS[gender][measurementType]
     : [];
   const hasStandard = standardPoints.length > 0;
 
-  // 基準線の月齢範囲と実測値の月齢範囲を包含するX軸レンジ
+  // 基準線の月齢範囲と実測値の月齢範囲（マイナス含む）を包含するX軸レンジ
   const xMax = useMemo(() => {
     const standardMax = hasStandard
       ? standardPoints[standardPoints.length - 1].months
@@ -129,6 +121,11 @@ const GrowthChart: React.FC<Props> = ({
     const dataMax = dataPoints.reduce((max, p) => Math.max(max, p.months), 0);
     return Math.max(12, Math.ceil(Math.max(standardMax, dataMax)));
   }, [dataPoints, hasStandard, standardPoints]);
+
+  const xMin = useMemo(() => {
+    const dataMin = dataPoints.reduce((min, p) => Math.min(min, p.months), 0);
+    return Math.floor(dataMin);
+  }, [dataPoints]);
 
   const standardLines = useMemo(() => {
     if (!gender || !hasStandard) return null;
@@ -189,7 +186,8 @@ const GrowthChart: React.FC<Props> = ({
   const plotWidth = Math.max(0, width - PADDING.left - PADDING.right);
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
 
-  const scaleX = (months: number) => PADDING.left + (months / xMax) * plotWidth;
+  const scaleX = (months: number) =>
+    PADDING.left + ((months - xMin) / (xMax - xMin || 1)) * plotWidth;
   const scaleY = (value: number) =>
     PADDING.top + (1 - (value - yMin) / (yMax - yMin || 1)) * plotHeight;
 
@@ -197,9 +195,12 @@ const GrowthChart: React.FC<Props> = ({
   const yTicks: number[] = [];
   for (let v = yMin; v <= yMax + 1e-9; v += yStep) yTicks.push(v);
 
-  const xStep = xMax <= 12 ? 1 : xMax <= 36 ? 3 : 6;
+  const xRange = xMax - xMin;
+  const xStep = xRange <= 12 ? 1 : xRange <= 36 ? 3 : 6;
   const xTicks: number[] = [];
-  for (let m = 0; m <= xMax; m += xStep) xTicks.push(m);
+  for (let m = Math.ceil(xMin / xStep) * xStep; m <= xMax + 1e-9; m += xStep) {
+    xTicks.push(m);
+  }
 
   const hasAnythingToPlot = dataPoints.length > 0 || standardLines !== null;
 
@@ -330,17 +331,20 @@ const GrowthChart: React.FC<Props> = ({
               strokeWidth={1.5}
             />
           ))}
-          {gestationalAxisLabel ? (
-            <SvgText
-              x={scaleX(0)}
-              y={CHART_HEIGHT - PADDING.bottom + 26}
-              fontSize={9}
-              fill={COLORS.textSecondary}
-              textAnchor="middle"
-            >
-              {gestationalAxisLabel}
-            </SvgText>
-          ) : null}
+          {dataPoints.map((p, index) =>
+            p.gestationalLabel ? (
+              <SvgText
+                key={`pt-label-${index}`}
+                x={scaleX(p.months) + 4}
+                y={scaleY(p.value) - 6}
+                fontSize={9}
+                fill={COLORS.textSecondary}
+                textAnchor="start"
+              >
+                {p.gestationalLabel}
+              </SvgText>
+            ) : null
+          )}
         </Svg>
       ) : null}
       {!hasAnythingToPlot ? (
