@@ -37,10 +37,11 @@ import {
 } from "@/utils/dateUtils";
 import {
   PhotoPermissionDeniedError,
-  PickedPhoto,
+  SizedPickedPhoto,
   deleteIfExistsAsync,
   pickPhotoAsync,
   saveCroppedProfilePhotoAsync,
+  saveDirectProfilePhotoAsync,
   resolvePhotoPath,
 } from "@/utils/photo";
 import { CropRect } from "@/utils/cropMath";
@@ -118,7 +119,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const [pendingCropSource, setPendingCropSource] =
-    useState<PickedPhoto | null>(null);
+    useState<SizedPickedPhoto | null>(null);
 
   const startOfLocalDay = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -180,10 +181,24 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     return Boolean(name) && isIsoDateString(birthDate);
   }, [formState.birthDate, formState.name]);
 
+  const applyNewProfilePhoto = async (newPath: string) => {
+    const prev = formState.profilePhotoPath;
+    if (prev && prev !== existing?.profilePhotoPath) {
+      await deleteIfExistsAsync(prev);
+    }
+    setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
+  };
+
   const handlePickPhoto = async () => {
     try {
       const picked = await pickPhotoAsync();
       if (!picked) return;
+      if (picked.width == null || picked.height == null) {
+        // 寸法が取得できない端末はトリミングをスキップして保存する
+        const newPath = await saveDirectProfilePhotoAsync(picked.uri);
+        await applyNewProfilePhoto(newPath);
+        return;
+      }
       setPendingCropSource(picked);
     } catch (e) {
       if (e instanceof PhotoPermissionDeniedError) {

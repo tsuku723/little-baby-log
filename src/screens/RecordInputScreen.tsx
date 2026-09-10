@@ -36,11 +36,12 @@ import {
   toUtcDateOnly,
 } from "@/utils/dateUtils";
 import {
-  PickedPhoto,
+  SizedPickedPhoto,
   deleteIfExistsAsync,
   ensureFileExistsAsync,
   pickPhotoAsync,
   saveCroppedPhotoAsync,
+  saveDirectPhotoAsync,
   resolvePhotoPath,
   PhotoPermissionDeniedError,
 } from "@/utils/photo";
@@ -85,7 +86,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
   );
   const [hasRemovedPhoto, setHasRemovedPhoto] = useState<boolean>(false);
   const [pendingCropSource, setPendingCropSource] =
-    useState<PickedPhoto | null>(null);
+    useState<SizedPickedPhoto | null>(null);
   const [isTitleSheetVisible, setTitleSheetVisible] = useState(false);
   const MIN_DATE = useMemo(() => new Date(1900, 0, 1), []);
   const MAX_DATE = useMemo(() => new Date(2100, 11, 31), []);
@@ -156,10 +157,27 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
     setTitleSheetVisible(false);
   };
 
+  const applyNewPhoto = async (next: string) => {
+    const previousTempPhoto =
+      photoPath && photoPath !== editingRecord?.photoPath ? photoPath : null;
+    if (previousTempPhoto && previousTempPhoto !== next) {
+      // 編集画面で選び直した未保存の写真は不要になるためクリーンアップする
+      await deleteIfExistsAsync(previousTempPhoto);
+    }
+    setPhotoPath(next);
+    setHasRemovedPhoto(false);
+  };
+
   const handlePickPhoto = async () => {
     try {
       const picked = await pickPhotoAsync();
       if (!picked) return;
+      if (picked.width == null || picked.height == null) {
+        // 寸法が取得できない端末はトリミングをスキップして保存する
+        const next = await saveDirectPhotoAsync(picked.uri);
+        await applyNewPhoto(next);
+        return;
+      }
       setPendingCropSource(picked);
     } catch (error) {
       if (error instanceof PhotoPermissionDeniedError) {
