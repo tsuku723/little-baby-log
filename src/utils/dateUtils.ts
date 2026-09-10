@@ -298,6 +298,38 @@ export const toCorrectedDecimalMonthsForGrowth = (params: {
   return toDecimalMonths(anchor, params.targetDate);
 };
 
+/**
+ * 成長記録グラフで修正月齢が0にクリップされる記録（早産で出産予定日より前の記録）について、
+ * その時点の在胎週数を返す。早産でない、または出産予定日以降の記録では null。
+ */
+export const toGestationalWeeksAtDate = (params: {
+  targetDate: string;
+  birthDate: string;
+  dueDate: string | null;
+}): { weeks: number; days: number } | null => {
+  const birth = normalizeToUtcDate(params.birthDate);
+  const due = params.dueDate ? normalizeToUtcDate(params.dueDate) : null;
+  const target = normalizeToUtcDate(params.targetDate);
+  if (
+    due === null ||
+    Number.isNaN(due.getTime()) ||
+    Number.isNaN(birth.getTime()) ||
+    Number.isNaN(target.getTime())
+  ) {
+    return null;
+  }
+  const gestationAtBirthDays = 280 - daysBetweenUtc(birth, due);
+  const isPreterm = gestationAtBirthDays < 259;
+  if (!isPreterm || utcDateMs(target) >= utcDateMs(due)) return null;
+
+  const gestationAtTargetDays =
+    gestationAtBirthDays + daysBetweenUtc(birth, target);
+  return {
+    weeks: Math.floor(gestationAtTargetDays / 7),
+    days: gestationAtTargetDays % 7,
+  };
+};
+
 export const monthKey = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

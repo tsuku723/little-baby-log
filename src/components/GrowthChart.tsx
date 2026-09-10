@@ -10,7 +10,10 @@ import {
 } from "@/constants/growthStandards";
 import { Gender, GrowthRecord } from "@/state/AppStateContext";
 import { getGrowthStandardAtMonth } from "@/utils/growthStandards";
-import { toCorrectedDecimalMonthsForGrowth } from "@/utils/dateUtils";
+import {
+  toCorrectedDecimalMonthsForGrowth,
+  toGestationalWeeksAtDate,
+} from "@/utils/dateUtils";
 
 type Props = {
   records: GrowthRecord[];
@@ -66,7 +69,8 @@ const GrowthChart: React.FC<Props> = ({
 
   const field = MEASUREMENT_FIELD[measurementType];
 
-  // 実測値: 修正月齢が負（出産予定日前）の場合は0ヶ月にクリップして表示する
+  // 実測値: 修正月齢が負（出産予定日前）の場合は0ヶ月にクリップし、
+  // クリップした点には在胎週数ラベル（例: 30w）を添えて元の時期が分かるようにする
   const dataPoints = useMemo(() => {
     return records
       .map((record) => {
@@ -78,9 +82,29 @@ const GrowthChart: React.FC<Props> = ({
           dueDate,
         });
         if (Number.isNaN(months)) return null;
-        return { months: Math.max(0, months), value };
+        const gestational =
+          months < 0
+            ? toGestationalWeeksAtDate({
+                targetDate: record.date,
+                birthDate,
+                dueDate,
+              })
+            : null;
+        return {
+          months: Math.max(0, months),
+          value,
+          gestationalLabel: gestational ? `${gestational.weeks}w` : null,
+        };
       })
-      .filter((p): p is { months: number; value: number } => p !== null)
+      .filter(
+        (
+          p
+        ): p is {
+          months: number;
+          value: number;
+          gestationalLabel: string | null;
+        } => p !== null
+      )
       .sort((a, b) => a.months - b.months);
   }, [birthDate, dueDate, field, records]);
 
@@ -298,6 +322,20 @@ const GrowthChart: React.FC<Props> = ({
               strokeWidth={1.5}
             />
           ))}
+          {dataPoints.map((p, index) =>
+            p.gestationalLabel ? (
+              <SvgText
+                key={`pt-label-${index}`}
+                x={scaleX(p.months) + 4}
+                y={scaleY(p.value) - 6}
+                fontSize={9}
+                fill={COLORS.textSecondary}
+                textAnchor="start"
+              >
+                {p.gestationalLabel}
+              </SvgText>
+            ) : null
+          )}
         </Svg>
       ) : null}
       {!hasAnythingToPlot ? (
