@@ -1,6 +1,8 @@
 import { GROWTH_STANDARDS } from "../src/constants/growthStandards";
 import {
   buildCalendarMonthView,
+  getGrowthChartPrematurityOffsetMonths,
+  gestationalWeeksAtChronologicalMonths,
   toCorrectedDecimalMonthsForGrowth,
   toDecimalMonths,
   toGestationalWeeksAtDate,
@@ -113,6 +115,65 @@ describe("toGestationalWeeksAtDate", () => {
       targetDate: "2024-04-01",
       birthDate: "2024-04-01",
       dueDate: null,
+    });
+    expect(result).toBeNull();
+  });
+});
+
+describe("getGrowthChartPrematurityOffsetMonths", () => {
+  test("早産なら出生日〜出産予定日の月齢差を返す", () => {
+    const result = getGrowthChartPrematurityOffsetMonths({
+      birthDate: "2024-04-01",
+      dueDate: "2024-06-10",
+    });
+    expect(result).toBeCloseTo(toDecimalMonths("2024-04-01", "2024-06-10"), 10);
+  });
+
+  test("正期産なら0", () => {
+    const result = getGrowthChartPrematurityOffsetMonths({
+      birthDate: "2024-03-01",
+      dueDate: "2024-03-05",
+    });
+    expect(result).toBe(0);
+  });
+
+  test("dueDate が null なら0", () => {
+    const result = getGrowthChartPrematurityOffsetMonths({
+      birthDate: "2024-04-01",
+      dueDate: null,
+    });
+    expect(result).toBe(0);
+  });
+});
+
+describe("gestationalWeeksAtChronologicalMonths", () => {
+  test("早産児の実月齢0（出生日）は出生時点の在胎週数を返す", () => {
+    // 出産予定日2024-06-10、出生日2024-04-01 → 在胎280-70=210日=30週0日
+    const result = gestationalWeeksAtChronologicalMonths({
+      chronologicalMonths: 0,
+      birthDate: "2024-04-01",
+      dueDate: "2024-06-10",
+    });
+    expect(result).toEqual({ weeks: 30, days: 0 });
+  });
+
+  test("出産予定日に到達する実月齢では null（以降は修正月齢側で扱う）", () => {
+    const result = gestationalWeeksAtChronologicalMonths({
+      chronologicalMonths: getGrowthChartPrematurityOffsetMonths({
+        birthDate: "2024-04-01",
+        dueDate: "2024-06-10",
+      }),
+      birthDate: "2024-04-01",
+      dueDate: "2024-06-10",
+    });
+    expect(result).toBeNull();
+  });
+
+  test("正期産なら null", () => {
+    const result = gestationalWeeksAtChronologicalMonths({
+      chronologicalMonths: 0,
+      birthDate: "2024-03-01",
+      dueDate: "2024-03-05",
     });
     expect(result).toBeNull();
   });

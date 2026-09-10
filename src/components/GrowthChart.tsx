@@ -11,8 +11,9 @@ import {
 import { Gender, GrowthRecord } from "@/state/AppStateContext";
 import { getGrowthStandardAtMonth } from "@/utils/growthStandards";
 import {
+  getGrowthChartPrematurityOffsetMonths,
+  gestationalWeeksAtChronologicalMonths,
   toCorrectedDecimalMonthsForGrowth,
-  toGestationalWeeksAtDate,
 } from "@/utils/dateUtils";
 
 type Props = {
@@ -24,7 +25,7 @@ type Props = {
 };
 
 const CHART_HEIGHT = 260;
-const PADDING = { top: 12, right: 12, bottom: 28, left: 40 };
+const PADDING = { top: 12, right: 12, bottom: 40, left: 40 };
 const STANDARD_SAMPLE_STEP_MONTHS = 0.5;
 
 const MEASUREMENT_FIELD: Record<GrowthMeasurementType, keyof GrowthRecord> = {
@@ -69,8 +70,15 @@ const GrowthChart: React.FC<Props> = ({
 
   const field = MEASUREMENT_FIELD[measurementType];
 
-  // 実測値: 修正月齢は出産予定日前ならマイナス値のまま実際の間隔通りにプロットする。
-  // 出産予定日前の点には在胎週数ラベル（例: 30w）を添えて時期を分かりやすくする
+  // 早産児は実月齢（出生日起点）と修正月齢（出産予定日起点）がずれる。
+  // 正期産なら0（両者が一致するため軸を1本化できる）
+  const offsetMonths = useMemo(
+    () => getGrowthChartPrematurityOffsetMonths({ birthDate, dueDate }),
+    [birthDate, dueDate]
+  );
+
+  // 実測値の位置は修正月齢（出産予定日前ならマイナス）で決める。
+  // 基準曲線も修正月齢基準のため、プロット位置はこの軸のまま揃える
   const dataPoints = useMemo(() => {
     return records
       .map((record) => {
@@ -82,29 +90,9 @@ const GrowthChart: React.FC<Props> = ({
           dueDate,
         });
         if (Number.isNaN(months)) return null;
-        const gestational =
-          months < 0
-            ? toGestationalWeeksAtDate({
-                targetDate: record.date,
-                birthDate,
-                dueDate,
-              })
-            : null;
-        return {
-          months,
-          value,
-          gestationalLabel: gestational ? `${gestational.weeks}w` : null,
-        };
+        return { months, value };
       })
-      .filter(
-        (
-          p
-        ): p is {
-          months: number;
-          value: number;
-          gestationalLabel: string | null;
-        } => p !== null
-      )
+      .filter((p): p is { months: number; value: number } => p !== null)
       .sort((a, b) => a.months - b.months);
   }, [birthDate, dueDate, field, records]);
 
@@ -124,8 +112,8 @@ const GrowthChart: React.FC<Props> = ({
 
   const xMin = useMemo(() => {
     const dataMin = dataPoints.reduce((min, p) => Math.min(min, p.months), 0);
-    return Math.floor(dataMin);
-  }, [dataPoints]);
+    return Math.min(-offsetMonths, dataMin);
+  }, [dataPoints, offsetMonths]);
 
   const standardLines = useMemo(() => {
     if (!gender || !hasStandard) return null;
@@ -195,11 +183,36 @@ const GrowthChart: React.FC<Props> = ({
   const yTicks: number[] = [];
   for (let v = yMin; v <= yMax + 1e-9; v += yStep) yTicks.push(v);
 
-  const xRange = xMax - xMin;
-  const xStep = xRange <= 12 ? 1 : xRange <= 36 ? 3 : 6;
-  const xTicks: number[] = [];
-  for (let m = Math.ceil(xMin / xStep) * xStep; m <= xMax + 1e-9; m += xStep) {
-    xTicks.push(m);
+  // X軸の目盛りは実月齢（出生日起点、常に0,1,2...）を主軸にする。
+  // 早産児は目盛りごとに副ラベルとして、出産予定日前なら在胎週数、以降なら修正月齢を添える
+  const chronologicalMax = Math.ceil(xMax + offsetMonths);
+  const chronStep = chronologicalMax <= 18 ? 1 : chronologicalMax <= 36 ? 3 : 6;
+  const xTicks: {
+    chronological: number;
+    corrected: number;
+    subLabel: string | null;
+  }[] = [];
+  for (
+    let chronological = 0;
+    chronological <= chronologicalMax + 1e-9;
+    chronological += chronStep
+  ) {
+    const corrected = chronological - offsetMonths;
+    if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
+    let subLabel: string | null = null;
+    if (offsetMonths > 1e-9) {
+      if (corrected < -1e-9) {
+        const gestational = gestationalWeeksAtChronologicalMonths({
+          chronologicalMonths: chronological,
+          birthDate,
+          dueDate,
+        });
+        subLabel = gestational ? `${gestational.weeks}w` : null;
+      } else {
+        subLabel = `修正${Math.round(corrected)}`;
+      }
+    }
+    xTicks.push({ chronological, corrected, subLabel });
   }
 
   const hasAnythingToPlot = dataPoints.length > 0 || standardLines !== null;
@@ -229,25 +242,36 @@ const GrowthChart: React.FC<Props> = ({
               </SvgText>
             </React.Fragment>
           ))}
-          {xTicks.map((m) => (
-            <React.Fragment key={`x-${m}`}>
+          {xTicks.map((tick) => (
+            <React.Fragment key={`x-${tick.chronological}`}>
               <Line
-                x1={scaleX(m)}
-                x2={scaleX(m)}
+                x1={scaleX(tick.corrected)}
+                x2={scaleX(tick.corrected)}
                 y1={PADDING.top}
                 y2={CHART_HEIGHT - PADDING.bottom}
                 stroke={COLORS.border}
                 strokeWidth={1}
               />
               <SvgText
-                x={scaleX(m)}
+                x={scaleX(tick.corrected)}
                 y={CHART_HEIGHT - PADDING.bottom + 14}
                 fontSize={10}
                 fill={COLORS.textSecondary}
                 textAnchor="middle"
               >
-                {m}
+                {tick.chronological}
               </SvgText>
+              {tick.subLabel ? (
+                <SvgText
+                  x={scaleX(tick.corrected)}
+                  y={CHART_HEIGHT - PADDING.bottom + 25}
+                  fontSize={8}
+                  fill={COLORS.textSecondary}
+                  textAnchor="middle"
+                >
+                  {tick.subLabel}
+                </SvgText>
+              ) : null}
             </React.Fragment>
           ))}
           <SvgText
@@ -257,7 +281,7 @@ const GrowthChart: React.FC<Props> = ({
             fill={COLORS.textSecondary}
             textAnchor="end"
           >
-            修正月齢（ヶ月）
+            実月齢（ヶ月）
           </SvgText>
 
           {standardLines ? (
@@ -331,20 +355,6 @@ const GrowthChart: React.FC<Props> = ({
               strokeWidth={1.5}
             />
           ))}
-          {dataPoints.map((p, index) =>
-            p.gestationalLabel ? (
-              <SvgText
-                key={`pt-label-${index}`}
-                x={scaleX(p.months) + 4}
-                y={scaleY(p.value) - 6}
-                fontSize={9}
-                fill={COLORS.textSecondary}
-                textAnchor="start"
-              >
-                {p.gestationalLabel}
-              </SvgText>
-            ) : null
-          )}
         </Svg>
       ) : null}
       {!hasAnythingToPlot ? (
