@@ -25,8 +25,27 @@ type Props = {
 };
 
 const CHART_HEIGHT = 320;
-const PADDING = { top: 12, right: 12, bottom: 40, left: 40 };
+const PADDING = { top: 12, right: 38, bottom: 40, left: 40 };
 const STANDARD_SAMPLE_STEP_MONTHS = 0.5;
+
+const STANDARD_LINE_LABEL: Record<
+  | "median"
+  | "sd1Upper"
+  | "sd1Lower"
+  | "sd2Upper"
+  | "sd2Lower"
+  | "sd25Lower"
+  | "sd30Lower",
+  string
+> = {
+  median: "中央値",
+  sd1Upper: "+1SD",
+  sd1Lower: "-1SD",
+  sd2Upper: "+2SD",
+  sd2Lower: "-2SD",
+  sd25Lower: "-2.5SD",
+  sd30Lower: "-3SD",
+};
 
 const MEASUREMENT_FIELD: Record<GrowthMeasurementType, keyof GrowthRecord> = {
   weight: "weightKg",
@@ -348,6 +367,32 @@ const GrowthChart: React.FC<Props> = ({
                   strokeDasharray="4,3"
                 />
               ))}
+              {(
+                [
+                  ["sd2Upper", STANDARD_LINE_COLOR],
+                  ["sd1Upper", STANDARD_LINE_COLOR],
+                  ["median", STANDARD_MEDIAN_COLOR],
+                  ["sd1Lower", STANDARD_LINE_COLOR],
+                  ["sd2Lower", STANDARD_LINE_COLOR],
+                  ["sd25Lower", STANDARD_DASHED_COLOR],
+                  ["sd30Lower", STANDARD_DASHED_COLOR],
+                ] as const
+              ).map(([key, color]) => {
+                const last = standardLines[key][standardLines[key].length - 1];
+                if (!last) return null;
+                return (
+                  <SvgText
+                    key={`label-${key}`}
+                    x={scaleX(last.months) + 3}
+                    y={scaleY(last.value) + 3}
+                    fontSize={8}
+                    fill={color}
+                    textAnchor="start"
+                  >
+                    {STANDARD_LINE_LABEL[key]}
+                  </SvgText>
+                );
+              })}
             </>
           ) : null}
 
@@ -388,8 +433,7 @@ const GrowthChart: React.FC<Props> = ({
         <Text style={styles.noteText}>基準線データは準備中です</Text>
       ) : gender && hasStandard ? (
         <Text style={styles.noteText}>
-          基準線: 中央値・±1SD・±2SD（実線）／±2.5SD・±3SD（破線）　出典:{" "}
-          {STANDARD_SOURCE_LABEL[measurementType]}
+          出典: {STANDARD_SOURCE_LABEL[measurementType]}
         </Text>
       ) : null}
     </View>
