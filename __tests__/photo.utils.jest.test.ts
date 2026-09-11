@@ -27,7 +27,7 @@ import {
   pickPhotoAsync,
   saveCroppedPhotoAsync,
   saveCroppedProfilePhotoAsync,
-  PhotoDimensionsUnavailableError,
+  saveDirectPhotoAsync,
   PhotoPermissionDeniedError,
 } from "../src/utils/photo";
 
@@ -56,7 +56,7 @@ describe("photo utils", () => {
     await expect(pickPhotoAsync()).resolves.toBeNull();
   });
 
-  test("pickPhotoAsync throws PhotoDimensionsUnavailableError when asset dimensions are missing", async () => {
+  test("pickPhotoAsync returns null width/height when asset dimensions are missing", async () => {
     (
       ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock
     ).mockResolvedValue({ granted: true });
@@ -65,9 +65,11 @@ describe("photo utils", () => {
       assets: [{ uri: "file:///tmp/src-no-size.png" }],
     });
 
-    await expect(pickPhotoAsync()).rejects.toThrow(
-      PhotoDimensionsUnavailableError
-    );
+    await expect(pickPhotoAsync()).resolves.toEqual({
+      uri: "file:///tmp/src-no-size.png",
+      width: null,
+      height: null,
+    });
   });
 
   test("pickPhotoAsync returns picked uri and dimensions", async () => {
@@ -117,6 +119,41 @@ describe("photo utils", () => {
       arg.to.startsWith("file:///doc/achievement-photos/achievement-")
     ).toBe(true);
     expect(arg.to.endsWith(".jpg")).toBe(true);
+    expect(result).toBe(`achievement-photos/${arg.to.split("/").pop()}`);
+  });
+
+  test("saveDirectPhotoAsync probes real dimensions, resizes by long edge, creates dir, moves file, and returns destination", async () => {
+    (ImageManipulator.manipulateAsync as jest.Mock)
+      .mockResolvedValueOnce({
+        uri: "file:///tmp/probe.png",
+        width: 1000,
+        height: 5000,
+      })
+      .mockResolvedValueOnce({ uri: "file:///tmp/out-direct.jpg" });
+    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({
+      exists: false,
+    });
+
+    const result = await saveDirectPhotoAsync("file:///tmp/src-no-size.png");
+
+    expect(ImageManipulator.manipulateAsync).toHaveBeenNthCalledWith(
+      1,
+      "file:///tmp/src-no-size.png",
+      []
+    );
+    expect(ImageManipulator.manipulateAsync).toHaveBeenNthCalledWith(
+      2,
+      "file:///tmp/src-no-size.png",
+      [{ resize: { height: 1600 } }],
+      { compress: 0.75, format: "jpeg" }
+    );
+    expect(FileSystem.makeDirectoryAsync).toHaveBeenCalledWith(
+      "file:///doc/achievement-photos/",
+      { intermediates: true }
+    );
+    expect(FileSystem.moveAsync).toHaveBeenCalledTimes(1);
+    const arg = (FileSystem.moveAsync as jest.Mock).mock.calls[0][0];
+    expect(arg.from).toBe("file:///tmp/out-direct.jpg");
     expect(result).toBe(`achievement-photos/${arg.to.split("/").pop()}`);
   });
 
