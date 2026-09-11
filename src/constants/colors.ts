@@ -27,6 +27,12 @@ export const COLORS = {
    * 既存の accentMain (#F2A48A) と同じ値を使う。
    */
   fabBackground: "#F2A48A",
+  /**
+   * 保存・バックアップ作成など主要操作(primaryボタン)の背景色。
+   * 危険操作色(sunday)と見分けやすいよう、accentMainとは別系統の緑を使う。
+   * 既存の optionSelectedBorder / ageBadgeChronologicalBg (#8BBBA5) と同じ値。
+   */
+  accentGreen: "#8BBBA5",
   optionSelectedBorder: "#8BBBA5",
 
   // Age badge colors

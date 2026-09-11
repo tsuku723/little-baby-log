@@ -86,8 +86,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.filterBackground,
   },
   primary: {
-    backgroundColor: COLORS.accentMain,
-    borderColor: COLORS.accentMain,
+    backgroundColor: COLORS.accentGreen,
+    borderColor: COLORS.accentGreen,
   },
   danger: {
     backgroundColor: COLORS.sunday,
