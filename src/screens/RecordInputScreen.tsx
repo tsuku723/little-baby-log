@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { RootStackParamList } from "@/navigation";
 import AppText from "@/components/AppText";
+import Button from "@/components/Button";
 import DatePickerModal from "@/components/DatePickerModal";
 import PhotoCropModal from "@/components/PhotoCropModal";
 import { useActiveUser } from "@/state/AppStateContext";
@@ -36,11 +37,12 @@ import {
   toUtcDateOnly,
 } from "@/utils/dateUtils";
 import {
-  PickedPhoto,
+  SizedPickedPhoto,
   deleteIfExistsAsync,
   ensureFileExistsAsync,
   pickPhotoAsync,
   saveCroppedPhotoAsync,
+  saveDirectPhotoAsync,
   resolvePhotoPath,
   PhotoPermissionDeniedError,
 } from "@/utils/photo";
@@ -85,7 +87,7 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
   );
   const [hasRemovedPhoto, setHasRemovedPhoto] = useState<boolean>(false);
   const [pendingCropSource, setPendingCropSource] =
-    useState<PickedPhoto | null>(null);
+    useState<SizedPickedPhoto | null>(null);
   const [isTitleSheetVisible, setTitleSheetVisible] = useState(false);
   const MIN_DATE = useMemo(() => new Date(1900, 0, 1), []);
   const MAX_DATE = useMemo(() => new Date(2100, 11, 31), []);
@@ -156,10 +158,27 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
     setTitleSheetVisible(false);
   };
 
+  const applyNewPhoto = async (next: string) => {
+    const previousTempPhoto =
+      photoPath && photoPath !== editingRecord?.photoPath ? photoPath : null;
+    if (previousTempPhoto && previousTempPhoto !== next) {
+      // 編集画面で選び直した未保存の写真は不要になるためクリーンアップする
+      await deleteIfExistsAsync(previousTempPhoto);
+    }
+    setPhotoPath(next);
+    setHasRemovedPhoto(false);
+  };
+
   const handlePickPhoto = async () => {
     try {
       const picked = await pickPhotoAsync();
       if (!picked) return;
+      if (picked.width == null || picked.height == null) {
+        // 寸法が取得できない端末はトリミングをスキップして保存する
+        const next = await saveDirectPhotoAsync(picked.uri);
+        await applyNewPhoto(next);
+        return;
+      }
       setPendingCropSource(picked);
     } catch (error) {
       if (error instanceof PhotoPermissionDeniedError) {
@@ -461,31 +480,19 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </ScrollView>
       <View style={styles.fixedActions}>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            styles.fixedActionButton,
-            styles.saveButton,
-          ]}
+        <Button
+          variant="primary"
+          style={styles.fixedActionButton}
+          title="保存"
           onPress={handleSave}
-          accessibilityRole="button"
-        >
-          <Text style={styles.actionButtonText}>保存</Text>
-        </TouchableOpacity>
+        />
         {editingRecord ? (
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.fixedActionButton,
-              styles.deleteButton,
-            ]}
+          <Button
+            variant="danger"
+            style={styles.fixedActionButton}
+            title="この記録を削除"
             onPress={confirmDelete}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-              この記録を削除
-            </Text>
-          </TouchableOpacity>
+          />
         ) : null}
       </View>
       <Modal
@@ -720,9 +727,6 @@ const styles = StyleSheet.create({
   fixedActionButton: {
     width: "100%",
   },
-  saveButton: {
-    alignSelf: "center",
-  },
   /* 記録入力ヘッダー */
   header: {
     flexDirection: "row",
@@ -751,13 +755,6 @@ const styles = StyleSheet.create({
   headerCancel: {
     fontSize: 16,
     color: COLORS.textPrimary,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.sunday,
-    borderColor: COLORS.sunday,
-  },
-  deleteButtonText: {
-    color: COLORS.surface,
   },
   sheetOverlay: {
     flex: 1,

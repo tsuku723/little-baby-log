@@ -140,26 +140,35 @@ const DayCell: React.FC<Props> = ({ day, onPress, gridPos }) => {
             {dateNumber}
           </Text>
         </View>
-        {hasAchievements && (
-          <View
-            style={[
-              styles.recordMarkBase,
-              day.achievementCount > RECORD_COUNT_BADGE_THRESHOLD
-                ? styles.recordCountBadge
-                : styles.recordDot,
-            ]}
-            accessible
-            accessibilityLabel={`記録${day.achievementCount}件`}
-          >
-            {day.achievementCount > RECORD_COUNT_BADGE_THRESHOLD && (
-              <Text style={styles.recordCountText}>
-                {day.achievementCount > RECORD_COUNT_DISPLAY_MAX
-                  ? `${RECORD_COUNT_DISPLAY_MAX}+`
-                  : day.achievementCount}
-              </Text>
-            )}
-          </View>
-        )}
+        <View style={styles.markRow}>
+          {day.hasGrowthRecords && (
+            <View
+              style={styles.growthMark}
+              accessible
+              accessibilityLabel="成長記録あり"
+            />
+          )}
+          {hasAchievements && (
+            <View
+              style={[
+                styles.recordMarkBase,
+                day.achievementCount > RECORD_COUNT_BADGE_THRESHOLD
+                  ? styles.recordCountBadge
+                  : styles.recordDot,
+              ]}
+              accessible
+              accessibilityLabel={`記録${day.achievementCount}件`}
+            >
+              {day.achievementCount > RECORD_COUNT_BADGE_THRESHOLD && (
+                <Text style={styles.recordCountText}>
+                  {day.achievementCount > RECORD_COUNT_DISPLAY_MAX
+                    ? `${RECORD_COUNT_DISPLAY_MAX}+`
+                    : day.achievementCount}
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
       </View>
       <View style={styles.contentArea}>
         {day.isCurrentMonth ? (
@@ -301,6 +310,19 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  markRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  // 成長記録は実績ドット（アクセント色）と区別するため小さめの緑ドットで示す
+  growthMark: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.ageBadgeChronologicalBg,
+    marginTop: 1,
+  },
   recordMarkBase: {
     minWidth: 14,
     height: 14,

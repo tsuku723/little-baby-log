@@ -34,6 +34,10 @@ jest.mock("@/state/AchievementsContext", () => ({
   useAchievements: () => ({ monthCounts: {}, loadMonth: mockLoadMonth }),
 }));
 
+jest.mock("@/state/GrowthRecordsContext", () => ({
+  useGrowthRecords: () => ({ records: [] }),
+}));
+
 jest.mock("@/state/DateViewContext", () => ({
   useDateViewContext: () => ({ selectDateFromCalendar: jest.fn() }),
 }));

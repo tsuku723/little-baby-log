@@ -24,12 +24,13 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { v4 as uuid } from "uuid";
 
 import AppText from "@/components/AppText";
+import Button from "@/components/Button";
 import DatePickerModal from "@/components/DatePickerModal";
 import PhotoCropModal from "@/components/PhotoCropModal";
 import { COLORS } from "@/constants/colors";
 import { UserSettings } from "@/models/dataModels";
 import { SettingsStackParamList, TabParamList } from "@/navigation";
-import { useAppState } from "@/state/AppStateContext";
+import { Gender, useAppState } from "@/state/AppStateContext";
 import {
   isIsoDateString,
   safeParseIsoLocal,
@@ -37,10 +38,11 @@ import {
 } from "@/utils/dateUtils";
 import {
   PhotoPermissionDeniedError,
-  PickedPhoto,
+  SizedPickedPhoto,
   deleteIfExistsAsync,
   pickPhotoAsync,
   saveCroppedProfilePhotoAsync,
+  saveDirectProfilePhotoAsync,
   resolvePhotoPath,
 } from "@/utils/photo";
 import { CropRect } from "@/utils/cropMath";
@@ -57,6 +59,7 @@ type FormState = {
   name: string;
   birthDate: string;
   dueDate: string;
+  gender: Gender | null;
   profilePhotoPath?: string;
 };
 
@@ -64,8 +67,15 @@ const createEmptyForm = (): FormState => ({
   name: "",
   birthDate: toIsoDateString(new Date()),
   dueDate: "",
+  gender: null,
   profilePhotoPath: undefined,
 });
+
+const GENDER_OPTIONS: { label: string; value: Gender | null }[] = [
+  { label: "男の子", value: "male" },
+  { label: "女の子", value: "female" },
+  { label: "未設定", value: null },
+];
 
 const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const { state, addUser, updateUser, deleteUser } = useAppState();
@@ -94,6 +104,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name: existing.name,
         birthDate: existing.birthDate,
         dueDate: existing.dueDate ?? "",
+        gender: existing.gender,
         profilePhotoPath: existing.profilePhotoPath,
       };
     }
@@ -118,7 +129,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const [pendingCropSource, setPendingCropSource] =
-    useState<PickedPhoto | null>(null);
+    useState<SizedPickedPhoto | null>(null);
 
   const startOfLocalDay = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -159,6 +170,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name: existing.name,
         birthDate: existing.birthDate,
         dueDate: existing.dueDate ?? "",
+        gender: existing.gender,
         profilePhotoPath: existing.profilePhotoPath,
       });
       setDraftSettings({ ...existing.settings });
@@ -180,10 +192,24 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     return Boolean(name) && isIsoDateString(birthDate);
   }, [formState.birthDate, formState.name]);
 
+  const applyNewProfilePhoto = async (newPath: string) => {
+    const prev = formState.profilePhotoPath;
+    if (prev && prev !== existing?.profilePhotoPath) {
+      await deleteIfExistsAsync(prev);
+    }
+    setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
+  };
+
   const handlePickPhoto = async () => {
     try {
       const picked = await pickPhotoAsync();
       if (!picked) return;
+      if (picked.width == null || picked.height == null) {
+        // 寸法が取得できない端末はトリミングをスキップして保存する
+        const newPath = await saveDirectProfilePhotoAsync(picked.uri);
+        await applyNewProfilePhoto(newPath);
+        return;
+      }
       setPendingCropSource(picked);
     } catch (e) {
       if (e instanceof PhotoPermissionDeniedError) {
@@ -272,6 +298,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name,
         birthDate,
         dueDate,
+        gender: formState.gender,
         profilePhotoPath: profilePhotoPath ?? undefined,
         settings: draftSettings,
       });
@@ -281,6 +308,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name,
         birthDate,
         dueDate,
+        gender: formState.gender,
         profilePhotoPath: profilePhotoPath ?? undefined,
         settings: draftSettings,
       });
@@ -293,6 +321,7 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         name,
         birthDate,
         dueDate,
+        gender: formState.gender,
         settings: draftSettings,
         createdAt: existing?.createdAt ?? new Date().toISOString(),
       });
@@ -478,6 +507,35 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.field}>
+          <Text style={styles.label}>性別（成長曲線の基準線に使用）</Text>
+          <View style={styles.optionRow}>
+            {GENDER_OPTIONS.map((option) => (
+              <Pressable
+                key={option.label}
+                style={[
+                  styles.optionButton,
+                  formState.gender === option.value &&
+                    styles.optionButtonSelected,
+                ]}
+                onPress={() =>
+                  setFormState((prev) => ({ ...prev, gender: option.value }))
+                }
+              >
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    formState.gender === option.value &&
+                      styles.optionLabelSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>こども表示設定</Text>
           <Text style={styles.description}>
@@ -605,33 +663,21 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </ScrollView>
       <View style={styles.fixedActions}>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            styles.saveButton,
-            !isFormValid && styles.saveButtonDisabled,
-          ]}
+        <Button
+          variant="primary"
+          style={styles.fullWidthButton}
+          title="保存"
           onPress={handleSave}
-          accessibilityRole="button"
           disabled={!isFormValid}
-        >
-          <Text style={styles.actionButtonText}>保存</Text>
-        </TouchableOpacity>
+        />
         {existing ? (
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.deleteButton,
-              users.length <= 1 && styles.deleteButtonDisabled,
-            ]}
+          <Button
+            variant="danger"
+            style={styles.fullWidthButton}
+            title="このプロフィールを削除する"
             onPress={handleDelete}
             disabled={users.length <= 1}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-              このプロフィールを削除する
-            </Text>
-          </TouchableOpacity>
+          />
         ) : null}
       </View>
       {activeDateField ? (
@@ -846,39 +892,8 @@ const styles = StyleSheet.create({
     gap: 12,
     alignItems: "center",
   },
-  actionButton: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: COLORS.filterBackground,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  fullWidthButton: {
     width: "100%",
-  },
-  actionButtonText: {
-    color: COLORS.textPrimary,
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  saveButton: {
-    alignSelf: "center",
-  },
-  saveButtonDisabled: {
-    opacity: 0.4,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.sunday,
-    borderColor: COLORS.sunday,
-  },
-  deleteButtonDisabled: {
-    opacity: 0.4,
-  },
-  deleteButtonText: {
-    color: COLORS.surface,
   },
 });
 

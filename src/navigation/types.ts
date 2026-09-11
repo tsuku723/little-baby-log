@@ -17,6 +17,12 @@ export type RootStackParamList = {
         from: "today" | "list";
       }
     | undefined;
+  GrowthRecordInput:
+    | {
+        recordId?: string; // edit-only
+        isoDate?: string; // initial date for new record
+      }
+    | undefined;
 };
 
 export type CalendarStackParamList = {
@@ -28,6 +34,10 @@ export type CalendarStackParamList = {
 
 export type RecordListStackParamList = {
   AchievementList: undefined;
+};
+
+export type GrowthStackParamList = {
+  GrowthTop: undefined;
 };
 
 export type SettingsStackParamList = {
@@ -50,5 +60,6 @@ export type SettingsStackParamList = {
 export type TabParamList = {
   CalendarStack: NavigatorScreenParams<CalendarStackParamList>;
   RecordListStack: NavigatorScreenParams<RecordListStackParamList>;
+  GrowthStack: NavigatorScreenParams<GrowthStackParamList>;
   SettingsStack: NavigatorScreenParams<SettingsStackParamList>;
 };

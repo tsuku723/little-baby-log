@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   SafeAreaView,
   ScrollView,
@@ -18,6 +17,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { SettingsStackParamList } from "@/navigation";
 import AppText from "@/components/AppText";
+import Button from "@/components/Button";
 import { useAppState } from "@/state/AppStateContext";
 import {
   createBackup,
@@ -68,8 +68,13 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     setBackupLoading(true);
     setBackupError(null);
     try {
-      const uri = await createBackup(state.users, state.achievements);
+      const uri = await createBackup(
+        state.users,
+        state.achievements,
+        state.growthRecords
+      );
       await Sharing.shareAsync(uri);
+      Alert.alert("完了", "バックアップを作成しました");
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "不明なエラーが発生しました";
@@ -77,7 +82,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     } finally {
       setBackupLoading(false);
     }
-  }, [state.users, state.achievements]);
+  }, [state.users, state.achievements, state.growthRecords]);
 
   const handleImport = useCallback(async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -113,8 +118,9 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             onPress: async () => {
               setImportLoading(true);
               try {
-                const { profiles, achievements } = await restoreBackup(uri);
-                await restoreState(profiles, achievements);
+                const { profiles, achievements, growthRecords } =
+                  await restoreBackup(uri);
+                await restoreState(profiles, achievements, growthRecords);
                 Alert.alert("完了", "バックアップからデータを復元しました");
               } catch (e) {
                 const raw = e instanceof Error ? e.message : "";
@@ -145,7 +151,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           text: "削除する",
           style: "destructive",
           onPress: () => {
-            void restoreState([], {});
+            void restoreState([], {}, {});
           },
         },
       ]
@@ -215,43 +221,25 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.backupSection}>
           <Text style={styles.label}>データ</Text>
-          <TouchableOpacity
+          <Button
             testID="backup-button"
-            style={[
-              styles.backupButton,
-              backupLoading && styles.backupButtonDisabled,
-            ]}
-            onPress={handleCreateBackup}
+            variant="primary"
+            title="バックアップを作成"
+            loading={backupLoading}
             disabled={backupLoading}
-            accessibilityRole="button"
-          >
-            {backupLoading ? (
-              <ActivityIndicator size="small" color={COLORS.textPrimary} />
-            ) : (
-              <Text style={styles.backupButtonText}>バックアップを作成</Text>
-            )}
-          </TouchableOpacity>
+            onPress={handleCreateBackup}
+          />
           {backupError !== null && (
             <Text style={styles.backupError}>{backupError}</Text>
           )}
-          <TouchableOpacity
+          <Button
             testID="import-button"
-            style={[
-              styles.backupButton,
-              importLoading && styles.backupButtonDisabled,
-            ]}
-            onPress={handleImport}
+            variant="danger"
+            title="バックアップをインポート"
+            loading={importLoading}
             disabled={importLoading}
-            accessibilityRole="button"
-          >
-            {importLoading ? (
-              <ActivityIndicator size="small" color={COLORS.textPrimary} />
-            ) : (
-              <Text style={styles.backupButtonText}>
-                バックアップをインポート
-              </Text>
-            )}
-          </TouchableOpacity>
+            onPress={handleImport}
+          />
         </View>
 
         <View style={styles.supportSection}>
@@ -394,23 +382,6 @@ const styles = StyleSheet.create({
   },
   backupSection: {
     gap: 8,
-  },
-  backupButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.filterBackground,
-    alignItems: "center",
-  },
-  backupButtonDisabled: {
-    opacity: 0.5,
-  },
-  backupButtonText: {
-    color: COLORS.textPrimary,
-    fontSize: 16,
-    fontWeight: "700",
   },
   backupError: {
     fontSize: 13,
