@@ -229,10 +229,18 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       const prev = formState.profilePhotoPath;
       const shouldDeletePrev = prev && prev !== existing?.profilePhotoPath;
-      const [newPath] = await Promise.all([
-        saveCroppedProfilePhotoAsync(pendingCropSource.uri, cropRect),
-        shouldDeletePrev ? deleteIfExistsAsync(prev) : null,
-      ]);
+      const newPath = await saveCroppedProfilePhotoAsync(
+        pendingCropSource.uri,
+        cropRect
+      );
+
+      // 旧一時ファイルの削除は必ず保存成功後に行う（並列化不可）。
+      // 保存失敗時に削除だけが実行されると profilePhotoPath が
+      // 存在しないファイルを指したままになる。
+      if (shouldDeletePrev && prev !== newPath) {
+        void deleteIfExistsAsync(prev);
+      }
+
       setFormState((s) => ({ ...s, profilePhotoPath: newPath }));
     } catch (error) {
       console.error("Failed to save cropped profile photo", error);
