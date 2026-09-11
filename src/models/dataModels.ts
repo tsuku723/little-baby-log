@@ -112,6 +112,8 @@ export type CalendarDay = {
   // 永続化は配列のため hasAchievements は boolean のままでOK
   hasAchievements: boolean;
 
+  hasGrowthRecords: boolean;
+
   // 100/200/365/1000日目のマイルストームバッジ（例:"100日","1歳"）。対象外の日は null。
   milestoneBadge: string | null;
 };

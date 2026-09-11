@@ -68,7 +68,11 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     setBackupLoading(true);
     setBackupError(null);
     try {
-      const uri = await createBackup(state.users, state.achievements);
+      const uri = await createBackup(
+        state.users,
+        state.achievements,
+        state.growthRecords
+      );
       await Sharing.shareAsync(uri);
       Alert.alert("完了", "バックアップを作成しました");
     } catch (e) {
@@ -78,7 +82,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     } finally {
       setBackupLoading(false);
     }
-  }, [state.users, state.achievements]);
+  }, [state.users, state.achievements, state.growthRecords]);
 
   const handleImport = useCallback(async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -114,8 +118,9 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             onPress: async () => {
               setImportLoading(true);
               try {
-                const { profiles, achievements } = await restoreBackup(uri);
-                await restoreState(profiles, achievements);
+                const { profiles, achievements, growthRecords } =
+                  await restoreBackup(uri);
+                await restoreState(profiles, achievements, growthRecords);
                 Alert.alert("完了", "バックアップからデータを復元しました");
               } catch (e) {
                 const raw = e instanceof Error ? e.message : "";
@@ -146,7 +151,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           text: "削除する",
           style: "destructive",
           onPress: () => {
-            void restoreState([], {});
+            void restoreState([], {}, {});
           },
         },
       ]

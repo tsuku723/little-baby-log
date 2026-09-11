@@ -12,6 +12,7 @@ import {
 import Navigator from "@/navigation";
 import { AppStateProvider } from "@/state/AppStateContext";
 import { AchievementsProvider } from "@/state/AchievementsContext";
+import { GrowthRecordsProvider } from "@/state/GrowthRecordsContext";
 import { TrackingReadyProvider } from "@/state/TrackingReadyContext";
 import { useTrackingPermission } from "@/hooks/useTrackingPermission";
 
@@ -30,9 +31,11 @@ const App: React.FC = () => {
         <StatusBar barStyle="dark-content" />
         <AppStateProvider>
           <AchievementsProvider>
-            <TrackingReadyProvider value={isTrackingReady}>
-              <Navigator />
-            </TrackingReadyProvider>
+            <GrowthRecordsProvider>
+              <TrackingReadyProvider value={isTrackingReady}>
+                <Navigator />
+              </TrackingReadyProvider>
+            </GrowthRecordsProvider>
           </AchievementsProvider>
         </AppStateProvider>
       </GestureHandlerRootView>

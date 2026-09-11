@@ -51,14 +51,28 @@ Expo Go アプリ（iOS / Android）でQRコードを読み込むと実機確認
 
 TestFlight版と同一端末に共存させるため、developmentプロファイルは`bundleIdentifier`を動的に`studio.teeda.littlebabylog.dev`へ切り替えている(`app.config.js`)。
 
-`eas build --profile development`をローカル実行する際は、以下のように`EAS_DANGEROUS_OVERRIDE_IOS_BUNDLE_IDENTIFIER`を明示的に指定すること。
+切り替えの判定には`eas.json`の`development`プロファイルで定義したカスタム環境変数`APP_VARIANT`を使う。
 
-```bash
-EAS_DANGEROUS_OVERRIDE_IOS_BUNDLE_IDENTIFIER=studio.teeda.littlebabylog.dev \
-  eas build --platform ios --profile development --non-interactive
+```jsonc
+// eas.json
+"development": {
+  // ...
+  "env": { "APP_VARIANT": "development" }
+}
 ```
 
-**理由**: `eas build`のローカル/対話的な認証情報解決処理(`eas credentials`コマンドも同様)は、`app.config.js`の動的な`EAS_BUILD_PROFILE`分岐を認識せず、常に`app.json`の静的なbundleIdentifier(`studio.teeda.littlebabylog`、`.dev`なし)を見てしまう既知の問題がある([expo/expo#40851](https://github.com/expo/expo/issues/40851)などで報告あり)。この環境変数を指定しないと、プロダクション用の証明書・プロビジョニングプロファイルが誤って`.dev`ビルドに割り当てられ、`Could not find target 'app'`や`does not match the bundle ID`といったエラーでビルドが失敗する。
+```js
+// app.config.js
+const isDevelopmentBuild = process.env.APP_VARIANT === "development";
+```
+
+**理由**: EAS組み込みの`EAS_BUILD_PROFILE`はリモートのビルドワーカー上でしか設定されず、ローカルでの認証情報解決フェーズ(`eas build`の事前ステップや`eas credentials`)では未設定になる。そのため`EAS_BUILD_PROFILE`で分岐すると、ローカル側は`.dev`なしのbundleIdentifierで認証情報を解決し、リモート側は`.dev`付きでアーカイブするという食い違いが起きて、`does not match the bundle ID`エラーでビルドが失敗する。`eas.json`の`env`はローカル・リモート双方で一貫して評価されるため、この不一致が起きない([Configure multiple app variants](https://docs.expo.dev/tutorial/eas/multiple-app-variants/))。
+
+ビルドは通常どおり実行する。
+
+```bash
+eas build --platform ios --profile development
+```
 
 ---
 

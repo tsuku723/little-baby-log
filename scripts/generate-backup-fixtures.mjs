@@ -313,10 +313,31 @@ async function generate() {
     await makeZipBuffer(makeBackupData({ profiles: [] }))
   );
 
-  // 18: version: 2（未対応バージョン）
+  // 18: version: 3（未対応バージョン）
   save(
-    "invalid_version_2.zip",
-    await makeZipBuffer(makeBackupData({ version: 2 }))
+    "invalid_version_3.zip",
+    await makeZipBuffer(makeBackupData({ version: 3 }))
+  );
+
+  // 19: version: 2（growthRecords あり）
+  save(
+    "valid_v2_with_growth_records.zip",
+    await makeZipBuffer(
+      makeBackupData({
+        version: 2,
+        growthRecords: {
+          u1: [
+            {
+              id: "g1",
+              date: "2024-03-01",
+              weightKg: 4.12,
+              heightCm: 55.3,
+              createdAt: "2024-03-01T00:00:00.000Z",
+            },
+          ],
+        },
+      })
+    )
   );
 
   console.log(`\n完了！ → ${OUT_DIR}`);

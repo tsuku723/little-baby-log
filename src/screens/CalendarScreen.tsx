@@ -23,6 +23,7 @@ import {
 } from "@/navigation";
 import { useAchievements } from "@/state/AchievementsContext";
 import { useActiveUser, useAppState } from "@/state/AppStateContext";
+import { useGrowthRecords } from "@/state/GrowthRecordsContext";
 import { useDateViewContext } from "@/state/DateViewContext";
 import {
   buildCalendarMonthView,
@@ -52,6 +53,7 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
   const user = useActiveUser();
   const { updateUser } = useAppState();
   const { monthCounts, loadMonth } = useAchievements();
+  const { records: growthRecords } = useGrowthRecords();
   const { selectDateFromCalendar } = useDateViewContext();
   const [anchorDate, setAnchorDate] = useState<Date>(() => {
     if (user?.settings.lastViewedMonth) {
@@ -100,6 +102,11 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
     user?.settings.lastViewedMonth,
   ]);
 
+  const growthRecordDatesSet = useMemo(
+    () => new Set(growthRecords.map((record) => record.date)),
+    [growthRecords]
+  );
+
   const monthView = useMemo(
     () =>
       buildCalendarMonthView({
@@ -116,8 +123,9 @@ const CalendarScreen: React.FC<Props> = ({ navigation }) => {
         birthDate: user?.birthDate ?? null,
         dueDate: user?.dueDate ?? null,
         achievementCountsByDay: monthCounts[monthKeyValue],
+        growthRecordDatesSet,
       }),
-    [anchorDate, monthCounts, monthKeyValue, user]
+    [anchorDate, growthRecordDatesSet, monthCounts, monthKeyValue, user]
   );
 
   const handlePrev = () => {

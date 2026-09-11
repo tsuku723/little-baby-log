@@ -1,11 +1,17 @@
 import * as FileSystem from "expo-file-system/legacy";
 import JSZip from "jszip";
 
-import { Achievement, UserProfile } from "@/state/AppStateContext";
+import {
+  Achievement,
+  GrowthRecord,
+  UserProfile,
+} from "@/state/AppStateContext";
 import { resolvePhotoPath } from "@/utils/photo";
 
 const APP_VERSION = "1.0.0";
-const BACKUP_FORMAT_VERSION = 1;
+// v2: growthRecords を追加。v1（growthRecords 無し）は空として復元する
+const BACKUP_FORMAT_VERSION = 2;
+const MIN_SUPPORTED_BACKUP_VERSION = 1;
 
 export const INVALID_FORMAT_ERROR =
   "バックアップファイルの形式が正しくありません";
@@ -16,11 +22,16 @@ export type BackupData = {
   exportedAt: string;
   profiles: UserProfile[];
   achievements: Record<string, Achievement[]>;
+  growthRecords?: Record<string, GrowthRecord[]>; // v2 で追加
 };
+
+const isSupportedVersion = (version: number): boolean =>
+  version >= MIN_SUPPORTED_BACKUP_VERSION && version <= BACKUP_FORMAT_VERSION;
 
 export const createBackup = async (
   profiles: UserProfile[],
-  achievements: Record<string, Achievement[]>
+  achievements: Record<string, Achievement[]>,
+  growthRecords: Record<string, GrowthRecord[]>
 ): Promise<string> => {
   const zip = new JSZip();
   const exportedAt = new Date().toISOString();
@@ -83,6 +94,7 @@ export const createBackup = async (
     exportedAt,
     profiles: exportedProfiles,
     achievements: exportedAchievements,
+    growthRecords,
   };
 
   zip.file("backup.json", JSON.stringify(backupData, null, 2));
@@ -133,7 +145,7 @@ export const validateBackup = async (zipUri: string): Promise<void> => {
     throw new Error(INVALID_FORMAT_ERROR);
   }
 
-  if (backupData.version !== BACKUP_FORMAT_VERSION) {
+  if (!isSupportedVersion(backupData.version)) {
     throw new Error("未対応のバックアップ形式です");
   }
 };
@@ -143,6 +155,7 @@ export const restoreBackup = async (
 ): Promise<{
   profiles: UserProfile[];
   achievements: Record<string, Achievement[]>;
+  growthRecords: Record<string, GrowthRecord[]>;
 }> => {
   const fileInfo = await FileSystem.getInfoAsync(zipUri);
   if (
@@ -179,7 +192,7 @@ export const restoreBackup = async (
     throw new Error(INVALID_FORMAT_ERROR);
   }
 
-  if (backupData.version !== BACKUP_FORMAT_VERSION) {
+  if (!isSupportedVersion(backupData.version)) {
     throw new Error("未対応のバックアップ形式です");
   }
 
@@ -238,5 +251,9 @@ export const restoreBackup = async (
     })
   );
 
-  return { profiles: restoredProfiles, achievements: restoredAchievements };
+  return {
+    profiles: restoredProfiles,
+    achievements: restoredAchievements,
+    growthRecords: backupData.growthRecords ?? {},
+  };
 };
