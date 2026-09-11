@@ -215,12 +215,36 @@ describe("restoreBackup（実ZIPフィクスチャ）", () => {
       );
     });
 
-    test("18: version: 2（未対応）— 専用エラーメッセージ", async () => {
-      setupFile("invalid_version_2.zip");
+    test("18: version: 3（未対応）— 専用エラーメッセージ", async () => {
+      setupFile("invalid_version_3.zip");
 
       await expect(restoreBackup("file:///any.zip")).rejects.toThrow(
         "未対応のバックアップ形式です"
       );
+    });
+  });
+
+  describe("バージョン互換", () => {
+    test("19: version 1（growthRecords 無し）は空の growthRecords として復元", async () => {
+      setupFile("valid_single_child_with_records.zip");
+
+      const result = await restoreBackup("file:///any.zip");
+
+      expect(result.growthRecords).toEqual({});
+    });
+
+    test("20: version 2（growthRecords あり）はそのまま復元", async () => {
+      setupFile("valid_v2_with_growth_records.zip");
+
+      const result = await restoreBackup("file:///any.zip");
+
+      expect(result.growthRecords.u1).toHaveLength(1);
+      expect(result.growthRecords.u1[0]).toMatchObject({
+        id: "g1",
+        date: "2024-03-01",
+        weightKg: 4.12,
+        heightCm: 55.3,
+      });
     });
   });
 });
@@ -232,8 +256,14 @@ describe("validateBackup（実ZIPフィクスチャ）", () => {
     await expect(validateBackup("file:///any.zip")).resolves.toBeUndefined();
   });
 
-  test("invalid_version_2.zip — 未対応エラー", async () => {
-    setupFile("invalid_version_2.zip");
+  test("valid_v2_with_growth_records.zip — version 2 でエラーなし", async () => {
+    setupFile("valid_v2_with_growth_records.zip");
+
+    await expect(validateBackup("file:///any.zip")).resolves.toBeUndefined();
+  });
+
+  test("invalid_version_3.zip — 未対応エラー", async () => {
+    setupFile("invalid_version_3.zip");
 
     await expect(validateBackup("file:///any.zip")).rejects.toThrow(
       "未対応のバックアップ形式です"

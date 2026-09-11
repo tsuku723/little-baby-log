@@ -975,12 +975,179 @@ describe("AppStateContext", () => {
     };
 
     await act(async () => {
-      await captured!.restoreState([newProfile], { "new-user": [] });
+      await captured!.restoreState([newProfile], { "new-user": [] }, {});
     });
 
     expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(
       "milestone-old-user-days-100"
     );
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalled();
+    expect(captured!.state.growthRecords).toEqual({ "new-user": [] });
+  });
+
+  test("ensureStateIntegrity fills missing growthRecords and gender for legacy state", async () => {
+    mockGetItem.mockResolvedValueOnce(
+      JSON.stringify({
+        users: [
+          {
+            id: "u1",
+            name: "A",
+            birthDate: "2025-01-01",
+            dueDate: null,
+            settings,
+            createdAt: "t",
+          },
+        ],
+        activeUserId: "u1",
+        achievements: { u1: [] },
+      })
+    );
+
+    let captured: ReturnType<typeof useAppState> | null = null;
+    const Probe = () => {
+      captured = useAppState();
+      return <Text>ok</Text>;
+    };
+
+    render(
+      <AppStateProvider>
+        <Probe />
+      </AppStateProvider>
+    );
+    await waitFor(() => expect(captured?.loading).toBe(false));
+
+    expect(captured!.state.growthRecords).toEqual({ u1: [] });
+    expect(captured!.state.users[0].gender).toBeNull();
+  });
+
+  test("ensureStateIntegrity drops malformed growthRecords (non-array bucket / missing date)", async () => {
+    const validRecord = {
+      id: "g1",
+      date: "2025-02-01",
+      weightKg: 3.2,
+      createdAt: "t",
+    };
+    mockGetItem.mockResolvedValueOnce(
+      JSON.stringify({
+        users: [
+          {
+            id: "u1",
+            name: "A",
+            birthDate: "2025-01-01",
+            dueDate: null,
+            settings,
+            createdAt: "t",
+          },
+          {
+            id: "u2",
+            name: "B",
+            birthDate: "2025-01-01",
+            dueDate: null,
+            settings,
+            createdAt: "t",
+          },
+        ],
+        activeUserId: "u1",
+        achievements: { u1: [], u2: [] },
+        growthRecords: {
+          u1: [validRecord, { id: "broken" }, "x", null],
+          u2: { not: "an array" },
+        },
+      })
+    );
+
+    let captured: ReturnType<typeof useAppState> | null = null;
+    const Probe = () => {
+      captured = useAppState();
+      return <Text>ok</Text>;
+    };
+
+    render(
+      <AppStateProvider>
+        <Probe />
+      </AppStateProvider>
+    );
+    await waitFor(() => expect(captured?.loading).toBe(false));
+
+    expect(captured!.state.growthRecords).toEqual({
+      u1: [validRecord],
+      u2: [],
+    });
+  });
+
+  test("add/update/delete growth record and deleteUser removes bucket", async () => {
+    mockGetItem.mockResolvedValueOnce(
+      JSON.stringify({
+        users: [
+          {
+            id: "u1",
+            name: "A",
+            birthDate: "2025-01-01",
+            dueDate: null,
+            gender: "female",
+            settings,
+            createdAt: "t",
+          },
+          {
+            id: "u2",
+            name: "B",
+            birthDate: "2025-02-01",
+            dueDate: null,
+            gender: null,
+            settings,
+            createdAt: "t",
+          },
+        ],
+        activeUserId: "u1",
+        achievements: { u1: [], u2: [] },
+        growthRecords: { u1: [], u2: [] },
+      })
+    );
+
+    let captured: ReturnType<typeof useAppState> | null = null;
+    const Probe = () => {
+      captured = useAppState();
+      return <Text>ok</Text>;
+    };
+
+    render(
+      <AppStateProvider>
+        <Probe />
+      </AppStateProvider>
+    );
+    await waitFor(() => expect(captured?.loading).toBe(false));
+
+    await act(async () => {
+      await captured!.addGrowthRecord("u1", {
+        id: "g1",
+        date: "2025-03-01",
+        weightKg: 4.5,
+        createdAt: "t",
+      });
+      await captured!.addGrowthRecord("u2", {
+        id: "g2",
+        date: "2025-03-01",
+        heightCm: 55,
+        createdAt: "t",
+      });
+    });
+    expect(captured!.state.growthRecords.u1).toHaveLength(1);
+    expect(captured!.state.growthRecords.u1[0].weightKg).toBe(4.5);
+
+    await act(async () => {
+      await captured!.updateGrowthRecord("u1", "g1", { weightKg: 4.75 });
+    });
+    expect(captured!.state.growthRecords.u1[0].weightKg).toBe(4.75);
+
+    await act(async () => {
+      await captured!.deleteGrowthRecord("u1", "g1");
+    });
+    expect(captured!.state.growthRecords.u1).toEqual([]);
+
+    await act(async () => {
+      await captured!.deleteUser("u2");
+    });
+    expect(captured!.state.growthRecords.u2).toBeUndefined();
+    expect(captured!.state.users).toHaveLength(1);
   });
 });
