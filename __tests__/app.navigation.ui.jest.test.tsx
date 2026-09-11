@@ -19,6 +19,9 @@ const mockAppStateProvider = jest.fn(({ children }) =>
 const mockAchievementsProvider = jest.fn(({ children }) =>
   React.createElement("AchievementsProvider", null, children)
 );
+const mockGrowthRecordsProvider = jest.fn(({ children }) =>
+  React.createElement("GrowthRecordsProvider", null, children)
+);
 
 jest.mock("expo", () => ({
   registerRootComponent: (...args: any[]) => mockRegisterRootComponent(...args),
@@ -63,6 +66,10 @@ jest.mock("@/state/AchievementsContext", () => ({
   AchievementsProvider: (props: any) => mockAchievementsProvider(props),
 }));
 
+jest.mock("@/state/GrowthRecordsContext", () => ({
+  GrowthRecordsProvider: (props: any) => mockGrowthRecordsProvider(props),
+}));
+
 jest.mock("expo-constants", () => ({
   __esModule: true,
   default: { expoConfig: { version: "1.2.3" } },
@@ -94,6 +101,7 @@ describe("App / navigation / legal wrappers", () => {
     // isTrackingReady が false→true に変化するため初期描画+再描画の2回呼ばれる
     expect(mockAppStateProvider).toHaveBeenCalledTimes(2);
     expect(mockAchievementsProvider).toHaveBeenCalledTimes(2);
+    expect(mockGrowthRecordsProvider).toHaveBeenCalledTimes(2);
     expect(mockNavigationContainer).toHaveBeenCalledTimes(2);
     act(() => {
       instance!.unmount();

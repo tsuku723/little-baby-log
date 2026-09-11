@@ -257,6 +257,87 @@ export const calculateAgeInfo = (params: {
   };
 };
 
+const AVG_DAYS_PER_MONTH = 30.4368; // 365.2425 / 12（グレゴリオ暦平均）
+
+/**
+ * fromIsoDate から toIsoDate までの月齢を小数で返す（成長記録グラフのX軸専用）。
+ * calculateAgeInfo の暦アンカー方式（diffYmdAnchored）とは別軸の単純な日数近似であり、
+ * 意図的に非統合。toDate が fromDate より前の場合は負値を返す。
+ */
+export const toDecimalMonths = (
+  fromIsoDate: string,
+  toIsoDate: string
+): number => {
+  const from = normalizeToUtcDate(fromIsoDate);
+  const to = normalizeToUtcDate(toIsoDate);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    return NaN;
+  }
+  const diffDays = (utcDateMs(to) - utcDateMs(from)) / MS_PER_DAY;
+  return diffDays / AVG_DAYS_PER_MONTH;
+};
+
+// calculateAgeInfo と同じ早産判定（在胎259日未満）。成長記録グラフの各関数で共用する。
+const isPretermForGrowth = (birth: Date, due: Date | null): boolean =>
+  due !== null &&
+  !Number.isNaN(due.getTime()) &&
+  !Number.isNaN(birth.getTime()) &&
+  280 - daysBetweenUtc(birth, due) < 259;
+
+/**
+ * 成長記録グラフ用の修正月齢（小数）を返す。
+ * calculateAgeInfo と同じ早産判定（在胎259日未満）のときのみ dueDate を起点にし、
+ * 正期産（dueDate 未設定・または在胎37週以上）は birthDate 起点の暦月齢を返す。
+ */
+export const toCorrectedDecimalMonthsForGrowth = (params: {
+  targetDate: string;
+  birthDate: string;
+  dueDate: string | null;
+}): number => {
+  const birth = normalizeToUtcDate(params.birthDate);
+  const due = params.dueDate ? normalizeToUtcDate(params.dueDate) : null;
+  const anchor = isPretermForGrowth(birth, due)
+    ? params.dueDate!
+    : params.birthDate;
+  return toDecimalMonths(anchor, params.targetDate);
+};
+
+/**
+ * 成長記録グラフのX軸用: 実月齢（出生日起点）と修正月齢（出産予定日起点）の差分（月）。
+ * 早産でなければ0（実月齢と修正月齢が一致するため軸を1本化できる）。
+ */
+export const getGrowthChartPrematurityOffsetMonths = (params: {
+  birthDate: string;
+  dueDate: string | null;
+}): number => {
+  const birth = normalizeToUtcDate(params.birthDate);
+  const due = params.dueDate ? normalizeToUtcDate(params.dueDate) : null;
+  if (!isPretermForGrowth(birth, due)) return 0;
+  return toDecimalMonths(params.birthDate, params.dueDate!);
+};
+
+/**
+ * 成長記録グラフのX軸目盛り用: 出生日からの実月齢（小数）における在胎週数を返す。
+ * 早産でない、またはその実月齢が出産予定日以降なら null。
+ */
+export const gestationalWeeksAtChronologicalMonths = (params: {
+  chronologicalMonths: number;
+  birthDate: string;
+  dueDate: string | null;
+}): { weeks: number; days: number } | null => {
+  const birth = normalizeToUtcDate(params.birthDate);
+  const due = params.dueDate ? normalizeToUtcDate(params.dueDate) : null;
+  if (!isPretermForGrowth(birth, due)) return null;
+  const gestationAtBirthDays = 280 - daysBetweenUtc(birth, due!);
+  const gestationAtTargetDays =
+    gestationAtBirthDays + params.chronologicalMonths * AVG_DAYS_PER_MONTH;
+  if (gestationAtTargetDays >= 280) return null;
+  return {
+    weeks: Math.floor(gestationAtTargetDays / 7),
+    days: Math.floor(gestationAtTargetDays % 7),
+  };
+};
+
 export const monthKey = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -277,12 +358,14 @@ export const buildCalendarMonthView = ({
   birthDate,
   dueDate,
   achievementCountsByDay,
+  growthRecordDatesSet,
 }: {
   anchorDate: Date;
   settings: UserSettings;
   birthDate: string | null;
   dueDate: string | null;
   achievementCountsByDay?: Record<string, number>;
+  growthRecordDatesSet?: Set<string>;
 }): CalendarMonthView => {
   const startDate = startOfCalendarGrid(anchorDate);
   const firstDay = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
@@ -430,6 +513,9 @@ export const buildCalendarMonthView = ({
       calendarAgeLabel,
       achievementCount: achievementCountsByDay?.[iso] ?? 0,
       hasAchievements: (achievementCountsByDay?.[iso] ?? 0) > 0,
+      // 実績マーク（当月分のみ集計）と揃えるため、隣接月のセルには表示しない
+      hasGrowthRecords:
+        isCurrentMonth && (growthRecordDatesSet?.has(iso) ?? false),
       milestoneBadge,
     });
 
