@@ -12,6 +12,7 @@ const baseDay: CalendarDay = {
   calendarAgeLabel: null,
   achievementCount: 0,
   hasAchievements: false,
+  hasGrowthRecords: false,
 };
 
 describe("DayCell UI branches", () => {
@@ -160,5 +161,21 @@ describe("DayCell UI branches", () => {
 
     const { queryByText } = render(<DayCell day={day} onPress={jest.fn()} />);
     expect(queryByText("9+")).toBeTruthy();
+  });
+
+  test("renders growth mark when hasGrowthRecords is true", () => {
+    const day: CalendarDay = { ...baseDay, hasGrowthRecords: true };
+
+    const { queryByLabelText } = render(
+      <DayCell day={day} onPress={jest.fn()} />
+    );
+    expect(queryByLabelText("成長記録あり")).toBeTruthy();
+  });
+
+  test("does not render growth mark when hasGrowthRecords is false", () => {
+    const { queryByLabelText } = render(
+      <DayCell day={baseDay} onPress={jest.fn()} />
+    );
+    expect(queryByLabelText("成長記録あり")).toBeNull();
   });
 });

@@ -81,9 +81,33 @@ describe("BackupService", () => {
       ([name]: [string]) => name === "backup.json"
     );
     const parsed = JSON.parse(jsonString);
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.appVersion).toBeDefined();
     expect(parsed.exportedAt).toBeDefined();
+  });
+
+  test("backup.json に growthRecords が含まれる", async () => {
+    const { createBackup } = require("../src/services/backupService");
+    const growthRecord = {
+      id: "g1",
+      date: "2024-03-01",
+      weightKg: 3.456,
+      createdAt: "2024-03-01T00:00:00.000Z",
+    };
+
+    await createBackup(
+      [baseProfile],
+      { u1: [baseAchievement] },
+      {
+        u1: [growthRecord],
+      }
+    );
+
+    const [, jsonString] = mockZipInstance.file.mock.calls.find(
+      ([name]: [string]) => name === "backup.json"
+    );
+    const parsed = JSON.parse(jsonString);
+    expect(parsed.growthRecords).toEqual({ u1: [growthRecord] });
   });
 
   test("写真が存在する場合は photos/ に格納し photoPath を ZIP 内パスに変換する", async () => {
@@ -344,17 +368,52 @@ describe("BackupService", () => {
       );
     });
 
-    test("バリデーション: version が 1 以外", async () => {
+    test("バリデーション: version が対応範囲外（3）", async () => {
       const { restoreBackup } = require("../src/services/backupService");
       mockZipFile.mockImplementation((name: string) => {
         if (name === "backup.json")
-          return makeTextFile({ ...validBackupData, version: 2 });
+          return makeTextFile({ ...validBackupData, version: 3 });
         return null;
       });
 
       await expect(restoreBackup("file:///cache/backup.zip")).rejects.toThrow(
         "未対応のバックアップ形式です"
       );
+    });
+
+    test("後方互換: version 1（growthRecords 無し）は空の growthRecords として復元する", async () => {
+      const { restoreBackup } = require("../src/services/backupService");
+      mockZipFile.mockImplementation((name: string) => {
+        if (name === "backup.json") return makeTextFile(validBackupData);
+        return null;
+      });
+
+      const result = await restoreBackup("file:///cache/backup.zip");
+
+      expect(result.growthRecords).toEqual({});
+    });
+
+    test("version 2: growthRecords をそのまま復元する", async () => {
+      const { restoreBackup } = require("../src/services/backupService");
+      const growthRecord = {
+        id: "g1",
+        date: "2024-03-01",
+        heightCm: 50.5,
+        createdAt: "2024-03-01T00:00:00.000Z",
+      };
+      mockZipFile.mockImplementation((name: string) => {
+        if (name === "backup.json")
+          return makeTextFile({
+            ...validBackupData,
+            version: 2,
+            growthRecords: { u1: [growthRecord] },
+          });
+        return null;
+      });
+
+      const result = await restoreBackup("file:///cache/backup.zip");
+
+      expect(result.growthRecords).toEqual({ u1: [growthRecord] });
     });
   });
 });

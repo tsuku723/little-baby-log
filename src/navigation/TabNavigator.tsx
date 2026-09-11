@@ -22,8 +22,10 @@ import SettingsScreen from "@/screens/SettingsScreen";
 import TermsScreen from "@/screens/TermsScreen";
 import TodayScreen from "@/screens/TodayScreen";
 import CalendarScreen from "@/screens/CalendarScreen";
+import GrowthScreen from "@/screens/GrowthScreen";
 import {
   CalendarStackParamList,
+  GrowthStackParamList,
   RecordListStackParamList,
   SettingsStackParamList,
   TabParamList,
@@ -32,6 +34,7 @@ import {
 const Tab = createBottomTabNavigator<TabParamList>();
 const CalendarStack = createNativeStackNavigator<CalendarStackParamList>();
 const RecordListStack = createNativeStackNavigator<RecordListStackParamList>();
+const GrowthStack = createNativeStackNavigator<GrowthStackParamList>();
 const SettingsStack = createNativeStackNavigator<SettingsStackParamList>();
 
 const CalendarStackNavigator: React.FC = () => (
@@ -54,6 +57,15 @@ const RecordListStackNavigator: React.FC = () => (
       component={AchievementListScreen}
     />
   </RecordListStack.Navigator>
+);
+
+const GrowthStackNavigator: React.FC = () => (
+  <GrowthStack.Navigator
+    initialRouteName="GrowthTop"
+    screenOptions={{ headerShown: false }}
+  >
+    <GrowthStack.Screen name="GrowthTop" component={GrowthScreen} />
+  </GrowthStack.Navigator>
 );
 
 const SettingsStackNavigator: React.FC = () => (
@@ -142,6 +154,16 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: "記録一覧",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="GrowthStack"
+        component={GrowthStackNavigator}
+        options={{
+          tabBarLabel: "成長",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="trending-up-outline" color={color} size={size} />
           ),
         }}
       />
