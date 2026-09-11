@@ -51,6 +51,15 @@ const STANDARD_LINE_COLOR = "#B8C7BE";
 const STANDARD_MEDIAN_COLOR = "#8BBBA5";
 const STANDARD_DASHED_COLOR = "#D5B1B1";
 
+// GROWTH_STANDARDSのデータ出典（src/constants/growthStandards.ts のコメント参照）。
+// 胸囲のみ他項目と調査年度が異なるため、項目別に出典を切り替えて表示する。
+const STANDARD_SOURCE_LABEL: Record<GrowthMeasurementType, string> = {
+  weight: "こども家庭庁「令和5年乳幼児身体発育調査」",
+  height: "こども家庭庁「令和5年乳幼児身体発育調査」",
+  headCircumference: "こども家庭庁「令和5年乳幼児身体発育調査」",
+  chestCircumference: "厚生労働省「平成22年乳幼児身体発育調査」",
+};
+
 type XY = { x: number; y: number };
 
 const toPolylinePoints = (points: XY[]): string =>
@@ -377,6 +386,11 @@ const GrowthChart: React.FC<Props> = ({
         </Text>
       ) : gender && !hasStandard ? (
         <Text style={styles.noteText}>基準線データは準備中です</Text>
+      ) : gender && hasStandard ? (
+        <Text style={styles.noteText}>
+          基準線: 中央値・±1SD・±2SD（実線）／±2.5SD・±3SD（破線）　出典:{" "}
+          {STANDARD_SOURCE_LABEL[measurementType]}
+        </Text>
       ) : null}
     </View>
   );
