@@ -24,6 +24,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { v4 as uuid } from "uuid";
 
 import AppText from "@/components/AppText";
+import Button from "@/components/Button";
 import DatePickerModal from "@/components/DatePickerModal";
 import PhotoCropModal from "@/components/PhotoCropModal";
 import { COLORS } from "@/constants/colors";
@@ -654,33 +655,21 @@ const ProfileEditScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </ScrollView>
       <View style={styles.fixedActions}>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            styles.saveButton,
-            !isFormValid && styles.saveButtonDisabled,
-          ]}
+        <Button
+          variant="primary"
+          style={styles.fullWidthButton}
+          title="保存"
           onPress={handleSave}
-          accessibilityRole="button"
           disabled={!isFormValid}
-        >
-          <Text style={styles.actionButtonText}>保存</Text>
-        </TouchableOpacity>
+        />
         {existing ? (
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.deleteButton,
-              users.length <= 1 && styles.deleteButtonDisabled,
-            ]}
+          <Button
+            variant="danger"
+            style={styles.fullWidthButton}
+            title="このプロフィールを削除する"
             onPress={handleDelete}
             disabled={users.length <= 1}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-              このプロフィールを削除する
-            </Text>
-          </TouchableOpacity>
+          />
         ) : null}
       </View>
       {activeDateField ? (
@@ -895,39 +884,8 @@ const styles = StyleSheet.create({
     gap: 12,
     alignItems: "center",
   },
-  actionButton: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: COLORS.filterBackground,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  fullWidthButton: {
     width: "100%",
-  },
-  actionButtonText: {
-    color: COLORS.textPrimary,
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  saveButton: {
-    alignSelf: "center",
-  },
-  saveButtonDisabled: {
-    opacity: 0.4,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.sunday,
-    borderColor: COLORS.sunday,
-  },
-  deleteButtonDisabled: {
-    opacity: 0.4,
-  },
-  deleteButtonText: {
-    color: COLORS.surface,
   },
 });
 
