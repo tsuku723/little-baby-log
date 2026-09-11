@@ -468,9 +468,6 @@ const RecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={styles.photoPreview}
                 resizeMode="cover"
               />
-              <Text style={styles.helper}>
-                保存時にこの写真を記録へ紐付けます。
-              </Text>
             </View>
           ) : (
             <Text style={styles.helper}>
