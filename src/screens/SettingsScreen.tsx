@@ -74,6 +74,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
         state.growthRecords
       );
       await Sharing.shareAsync(uri);
+      Alert.alert("完了", "バックアップを作成しました");
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "不明なエラーが発生しました";
