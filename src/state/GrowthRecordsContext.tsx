@@ -96,6 +96,7 @@ export const GrowthRecordsProvider: React.FC<{
         }
       } catch (err) {
         console.error("upsert failed:", err);
+        throw err;
       } finally {
         setLoading(false);
       }
@@ -120,6 +121,7 @@ export const GrowthRecordsProvider: React.FC<{
         await deleteGrowthRecord(state.activeUserId, id);
       } catch (err) {
         console.error("remove failed:", err);
+        throw err;
       } finally {
         setLoading(false);
       }

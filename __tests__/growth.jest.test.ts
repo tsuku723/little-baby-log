@@ -5,7 +5,6 @@ import {
   gestationalWeeksAtChronologicalMonths,
   toCorrectedDecimalMonthsForGrowth,
   toDecimalMonths,
-  toGestationalWeeksAtDate,
 } from "../src/utils/dateUtils";
 import { getGrowthStandardAtMonth } from "../src/utils/growthStandards";
 
@@ -78,45 +77,6 @@ describe("toCorrectedDecimalMonthsForGrowth", () => {
       dueDate: "2024-03-01",
     });
     expect(result).toBeLessThan(0);
-  });
-});
-
-describe("toGestationalWeeksAtDate", () => {
-  test("早産で出産予定日より前なら在胎週数を返す", () => {
-    // 出産予定日2024-06-10、出生日2024-04-01 → 在胎280-70=210日=30週0日
-    const result = toGestationalWeeksAtDate({
-      targetDate: "2024-04-01",
-      birthDate: "2024-04-01",
-      dueDate: "2024-06-10",
-    });
-    expect(result).toEqual({ weeks: 30, days: 0 });
-  });
-
-  test("出産予定日以降は null", () => {
-    const result = toGestationalWeeksAtDate({
-      targetDate: "2024-06-10",
-      birthDate: "2024-04-01",
-      dueDate: "2024-06-10",
-    });
-    expect(result).toBeNull();
-  });
-
-  test("正期産（在胎37週以上）は null", () => {
-    const result = toGestationalWeeksAtDate({
-      targetDate: "2024-03-01",
-      birthDate: "2024-03-01",
-      dueDate: "2024-03-05",
-    });
-    expect(result).toBeNull();
-  });
-
-  test("dueDate が null なら null", () => {
-    const result = toGestationalWeeksAtDate({
-      targetDate: "2024-04-01",
-      birthDate: "2024-04-01",
-      dueDate: null,
-    });
-    expect(result).toBeNull();
   });
 });
 

@@ -38,7 +38,6 @@ import {
   useAppState,
   useAchievements,
   useActiveUser,
-  useGrowthRecords,
   UserSettings,
 } from "../src/state/AppStateContext";
 
@@ -1005,10 +1004,8 @@ describe("AppStateContext", () => {
     );
 
     let captured: ReturnType<typeof useAppState> | null = null;
-    let activeGrowthRecords: ReturnType<typeof useGrowthRecords> = [];
     const Probe = () => {
       captured = useAppState();
-      activeGrowthRecords = useGrowthRecords();
       return <Text>ok</Text>;
     };
 
@@ -1021,7 +1018,6 @@ describe("AppStateContext", () => {
 
     expect(captured!.state.growthRecords).toEqual({ u1: [] });
     expect(captured!.state.users[0].gender).toBeNull();
-    expect(activeGrowthRecords).toEqual([]);
   });
 
   test("ensureStateIntegrity drops malformed growthRecords (non-array bucket / missing date)", async () => {
@@ -1109,10 +1105,8 @@ describe("AppStateContext", () => {
     );
 
     let captured: ReturnType<typeof useAppState> | null = null;
-    let activeGrowthRecords: ReturnType<typeof useGrowthRecords> = [];
     const Probe = () => {
       captured = useAppState();
-      activeGrowthRecords = useGrowthRecords();
       return <Text>ok</Text>;
     };
 
@@ -1137,8 +1131,8 @@ describe("AppStateContext", () => {
         createdAt: "t",
       });
     });
-    expect(activeGrowthRecords).toHaveLength(1);
-    expect(activeGrowthRecords[0].weightKg).toBe(4.5);
+    expect(captured!.state.growthRecords.u1).toHaveLength(1);
+    expect(captured!.state.growthRecords.u1[0].weightKg).toBe(4.5);
 
     await act(async () => {
       await captured!.updateGrowthRecord("u1", "g1", { weightKg: 4.75 });

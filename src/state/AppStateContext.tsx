@@ -618,9 +618,3 @@ export const useAchievements = (): Achievement[] => {
   if (!state.activeUserId) return [];
   return state.achievements[state.activeUserId] ?? [];
 };
-
-export const useGrowthRecords = (): GrowthRecord[] => {
-  const { state } = useAppState();
-  if (!state.activeUserId) return [];
-  return state.growthRecords[state.activeUserId] ?? [];
-};

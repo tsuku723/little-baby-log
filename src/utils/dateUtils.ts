@@ -303,35 +303,6 @@ export const toCorrectedDecimalMonthsForGrowth = (params: {
 };
 
 /**
- * 成長記録グラフで修正月齢が負（出産予定日前）の記録について、その時点の在胎週数を返す。
- * 早産でない、または出産予定日以降の記録では null。
- */
-export const toGestationalWeeksAtDate = (params: {
-  targetDate: string;
-  birthDate: string;
-  dueDate: string | null;
-}): { weeks: number; days: number } | null => {
-  const birth = normalizeToUtcDate(params.birthDate);
-  const due = params.dueDate ? normalizeToUtcDate(params.dueDate) : null;
-  const target = normalizeToUtcDate(params.targetDate);
-  if (
-    due === null ||
-    Number.isNaN(target.getTime()) ||
-    !isPretermForGrowth(birth, due) ||
-    utcDateMs(target) >= utcDateMs(due)
-  ) {
-    return null;
-  }
-  const gestationAtBirthDays = 280 - daysBetweenUtc(birth, due);
-  const gestationAtTargetDays =
-    gestationAtBirthDays + daysBetweenUtc(birth, target);
-  return {
-    weeks: Math.floor(gestationAtTargetDays / 7),
-    days: gestationAtTargetDays % 7,
-  };
-};
-
-/**
  * 成長記録グラフのX軸用: 実月齢（出生日起点）と修正月齢（出産予定日起点）の差分（月）。
  * 早産でなければ0（実月齢と修正月齢が一致するため軸を1本化できる）。
  */

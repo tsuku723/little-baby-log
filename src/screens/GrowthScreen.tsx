@@ -70,7 +70,9 @@ const GrowthScreen: React.FC<Props> = () => {
   const listItems = useMemo(
     () =>
       [...records].sort((a, b) => {
-        if (a.date === b.date) return b.createdAt.localeCompare(a.createdAt);
+        if (a.date === b.date) {
+          return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+        }
         return b.date.localeCompare(a.date);
       }),
     [records]
