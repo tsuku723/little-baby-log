@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
+  Platform,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -29,36 +31,47 @@ import { toIsoDateString, toUtcDateOnly } from "@/utils/dateUtils";
 type Props = NativeStackScreenProps<GrowthStackParamList, "GrowthTop">;
 type RootNavigation = NavigationProp<RootStackParamList & TabParamList>;
 
-const MEASUREMENT_TABS: { key: GrowthMeasurementType; label: string }[] = [
-  { key: "weight", label: "体重" },
-  { key: "height", label: "身長" },
-  { key: "headCircumference", label: "頭囲" },
-  { key: "chestCircumference", label: "胸囲" },
+type NumericGrowthField =
+  | "weightKg"
+  | "heightCm"
+  | "headCircumferenceCm"
+  | "chestCircumferenceCm";
+
+const MEASUREMENT_TABS: {
+  key: GrowthMeasurementType;
+  label: string;
+  field: NumericGrowthField;
+  unit: string;
+}[] = [
+  { key: "weight", label: "体重", field: "weightKg", unit: "kg" },
+  { key: "height", label: "身長", field: "heightCm", unit: "cm" },
+  {
+    key: "headCircumference",
+    label: "頭囲",
+    field: "headCircumferenceCm",
+    unit: "cm",
+  },
+  {
+    key: "chestCircumference",
+    label: "胸囲",
+    field: "chestCircumferenceCm",
+    unit: "cm",
+  },
+];
+
+const ALL_NUMERIC_FIELDS: NumericGrowthField[] = [
+  "weightKg",
+  "heightCm",
+  "headCircumferenceCm",
+  "chestCircumferenceCm",
 ];
 
 const dateLabel = (iso: string): string => iso.replace(/-/g, "/");
 
-const formatValues = (record: GrowthRecord): string => {
-  const parts: string[] = [];
-  if (typeof record.weightKg === "number") {
-    parts.push(`体重 ${record.weightKg.toFixed(1)}kg`);
-  }
-  if (typeof record.heightCm === "number") {
-    parts.push(`身長 ${record.heightCm.toFixed(1)}cm`);
-  }
-  if (typeof record.headCircumferenceCm === "number") {
-    parts.push(`頭囲 ${record.headCircumferenceCm.toFixed(1)}cm`);
-  }
-  if (typeof record.chestCircumferenceCm === "number") {
-    parts.push(`胸囲 ${record.chestCircumferenceCm.toFixed(1)}cm`);
-  }
-  return parts.join(" / ");
-};
-
 const GrowthScreen: React.FC<Props> = () => {
   const rootNavigation = useNavigation<RootNavigation>();
   const user = useActiveUser();
-  const { loading, records } = useGrowthRecords();
+  const { loading, records, upsert, remove } = useGrowthRecords();
   const [measurementType, setMeasurementType] =
     useState<GrowthMeasurementType>("weight");
   const todayIso = useMemo(
@@ -66,30 +79,116 @@ const GrowthScreen: React.FC<Props> = () => {
     []
   );
 
-  // 一覧は新しい記録が上に来るよう日付降順（同日は作成日時降順）
-  const listItems = useMemo(
-    () =>
-      [...records].sort((a, b) => {
-        if (a.date === b.date) {
-          return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
-        }
-        return b.date.localeCompare(a.date);
-      }),
-    [records]
+  const activeTab = useMemo(
+    () => MEASUREMENT_TABS.find((tab) => tab.key === measurementType)!,
+    [measurementType]
   );
 
-  const renderItem = ({ item }: { item: GrowthRecord }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() =>
-        rootNavigation.navigate("GrowthRecordInput", { recordId: item.id })
-      }
-      accessibilityRole="button"
-    >
-      <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
-      <Text style={styles.cardValues}>{formatValues(item)}</Text>
-    </TouchableOpacity>
+  // 一覧は新しい記録が上に来るよう日付降順（同日は作成日時降順）
+  // 選択中タブの項目が入力されている記録のみを対象にする
+  const listItems = useMemo(
+    () =>
+      [...records]
+        .filter((record) => typeof record[activeTab.field] === "number")
+        .sort((a, b) => {
+          if (a.date === b.date) {
+            return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+          }
+          return b.date.localeCompare(a.date);
+        }),
+    [records, activeTab]
   );
+
+  const handleDeleteField = (record: GrowthRecord) => {
+    const remainingFields = ALL_NUMERIC_FIELDS.filter(
+      (field) => field !== activeTab.field && typeof record[field] === "number"
+    );
+    const deleteRecord = async () => {
+      try {
+        if (remainingFields.length === 0) {
+          await remove(record.id);
+          return;
+        }
+        await upsert({
+          id: record.id,
+          date: record.date,
+          weightKg:
+            activeTab.field === "weightKg" ? undefined : record.weightKg,
+          heightCm:
+            activeTab.field === "heightCm" ? undefined : record.heightCm,
+          headCircumferenceCm:
+            activeTab.field === "headCircumferenceCm"
+              ? undefined
+              : record.headCircumferenceCm,
+          chestCircumferenceCm:
+            activeTab.field === "chestCircumferenceCm"
+              ? undefined
+              : record.chestCircumferenceCm,
+        });
+      } catch (error) {
+        console.error("Failed to delete growth record field", error);
+        if (Platform.OS === "web") {
+          window.alert("削除に失敗しました。時間をおいて再度お試しください。");
+        } else {
+          Alert.alert("削除に失敗しました", "時間をおいて再度お試しください。");
+        }
+      }
+    };
+
+    if (Platform.OS === "web") {
+      const ok = window.confirm(
+        `${activeTab.label}の記録を削除します。よろしいですか？`
+      );
+      if (!ok) return;
+      deleteRecord();
+      return;
+    }
+
+    Alert.alert(
+      "削除しますか？",
+      `${activeTab.label}の記録を削除します。よろしいですか？`,
+      [
+        { text: "キャンセル", style: "cancel" },
+        {
+          text: "削除",
+          style: "destructive",
+          onPress: deleteRecord,
+        },
+      ]
+    );
+  };
+
+  const renderItem = ({ item }: { item: GrowthRecord }) => {
+    const value = item[activeTab.field];
+    return (
+      <View style={styles.card}>
+        <TouchableOpacity
+          style={styles.cardMain}
+          onPress={() =>
+            rootNavigation.navigate("GrowthRecordInput", {
+              recordId: item.id,
+            })
+          }
+          accessibilityRole="button"
+        >
+          <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
+          <Text style={styles.cardValues}>
+            {activeTab.label}{" "}
+            {typeof value === "number" ? value.toFixed(1) : ""}
+            {activeTab.unit}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteField(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`${activeTab.label}の記録を削除`}
+        >
+          <Text style={styles.deleteButtonText}>削除</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -156,7 +255,7 @@ const GrowthScreen: React.FC<Props> = () => {
         }
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {loading ? "読み込み中..." : "まだ記録がありません"}
+            {loading ? "読み込み中..." : `${activeTab.label}の記録がありません`}
           </Text>
         }
       />
@@ -231,11 +330,17 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   card: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 12,
+    gap: 4,
+  },
+  cardMain: {
+    flex: 1,
     gap: 4,
   },
   cardDate: {
@@ -245,6 +350,14 @@ const styles = StyleSheet.create({
   cardValues: {
     fontSize: 15,
     color: COLORS.textPrimary,
+  },
+  deleteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  deleteButtonText: {
+    fontSize: 13,
+    color: COLORS.sunday,
   },
   empty: {
     fontSize: 16,
