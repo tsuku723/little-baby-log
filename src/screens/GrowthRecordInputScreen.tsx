@@ -224,6 +224,21 @@ const GrowthRecordInputScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.note}>
             最初にプロフィール設定から始めましょう
           </Text>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              testID="empty-settings-button"
+              style={styles.navButton}
+              onPress={() =>
+                navigation.navigate("MainTabs", {
+                  screen: "SettingsStack",
+                  params: { screen: "ProfileManager" },
+                })
+              }
+              accessibilityRole="button"
+            >
+              <Text style={styles.navButtonText}>設定へ</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -399,6 +414,18 @@ const styles = StyleSheet.create({
   emptyContainer: { flexGrow: 1, padding: 24, gap: 16 },
   title: { fontSize: 24, fontWeight: "700", color: COLORS.textPrimary },
   note: { fontSize: 16, color: COLORS.textPrimary },
+  buttonRow: { marginTop: 12 },
+  navButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: COLORS.filterBackground,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  navButtonText: { color: COLORS.textPrimary, fontWeight: "600", fontSize: 14 },
   field: { gap: 10 },
   label: { fontSize: 16, color: COLORS.textPrimary, fontWeight: "600" },
   input: {
