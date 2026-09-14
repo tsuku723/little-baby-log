@@ -173,9 +173,12 @@ const PhotoCropModal: React.FC<Props> = ({
     ],
   }));
 
+  const imageSizeStyle = useMemo(
+    () => ({ width: imageWidth * baseScale, height: imageHeight * baseScale }),
+    [imageWidth, imageHeight, baseScale]
+  );
+
   const scaleStyle = useAnimatedStyle(() => ({
-    width: imageWidth * baseScale,
-    height: imageHeight * baseScale,
     transform: [{ scale: userScale.value }],
   }));
 
@@ -260,7 +263,7 @@ const PhotoCropModal: React.FC<Props> = ({
                   <Animated.View style={[styles.panLayer, translateStyle]}>
                     <Animated.Image
                       source={{ uri: imageUri }}
-                      style={scaleStyle}
+                      style={[imageSizeStyle, scaleStyle]}
                     />
                   </Animated.View>
                 </GestureDetector>
