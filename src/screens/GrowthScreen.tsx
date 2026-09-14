@@ -15,7 +15,7 @@ import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import AppText from "@/components/AppText";
-import GrowthChart from "@/components/GrowthChart";
+import GrowthChart, { MEASUREMENT_FIELD } from "@/components/GrowthChart";
 import UserAvatar from "@/components/UserAvatar";
 import { COLORS } from "@/constants/colors";
 import { GrowthMeasurementType } from "@/constants/growthStandards";
@@ -31,11 +31,7 @@ import { toIsoDateString, toUtcDateOnly } from "@/utils/dateUtils";
 type Props = NativeStackScreenProps<GrowthStackParamList, "GrowthTop">;
 type RootNavigation = NavigationProp<RootStackParamList & TabParamList>;
 
-type NumericGrowthField =
-  | "weightKg"
-  | "heightCm"
-  | "headCircumferenceCm"
-  | "chestCircumferenceCm";
+type NumericGrowthField = (typeof MEASUREMENT_FIELD)[GrowthMeasurementType];
 
 const MEASUREMENT_TABS: {
   key: GrowthMeasurementType;
@@ -43,18 +39,18 @@ const MEASUREMENT_TABS: {
   field: NumericGrowthField;
   unit: string;
 }[] = [
-  { key: "weight", label: "体重", field: "weightKg", unit: "kg" },
-  { key: "height", label: "身長", field: "heightCm", unit: "cm" },
+  { key: "weight", label: "体重", field: MEASUREMENT_FIELD.weight, unit: "kg" },
+  { key: "height", label: "身長", field: MEASUREMENT_FIELD.height, unit: "cm" },
   {
     key: "headCircumference",
     label: "頭囲",
-    field: "headCircumferenceCm",
+    field: MEASUREMENT_FIELD.headCircumference,
     unit: "cm",
   },
   {
     key: "chestCircumference",
     label: "胸囲",
-    field: "chestCircumferenceCm",
+    field: MEASUREMENT_FIELD.chestCircumference,
     unit: "cm",
   },
 ];

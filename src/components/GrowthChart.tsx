@@ -47,7 +47,10 @@ const STANDARD_LINE_LABEL: Record<
   sd30Lower: "-3SD",
 };
 
-const MEASUREMENT_FIELD: Record<GrowthMeasurementType, keyof GrowthRecord> = {
+export const MEASUREMENT_FIELD: Record<
+  GrowthMeasurementType,
+  keyof GrowthRecord
+> = {
   weight: "weightKg",
   height: "heightCm",
   headCircumference: "headCircumferenceCm",
