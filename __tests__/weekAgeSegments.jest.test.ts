@@ -10,7 +10,11 @@ const settings = {
 const makeDay = (
   iso: string,
   birthDate: string,
-  isCurrentMonth = true
+  isCurrentMonth = true,
+  options: {
+    dueDate?: string | null;
+    showCorrectedUntilMonths?: number | null;
+  } = {}
 ): CalendarDay => ({
   date: iso,
   isCurrentMonth,
@@ -18,8 +22,9 @@ const makeDay = (
   ageInfo: calculateAgeInfo({
     targetDate: iso,
     birthDate,
-    dueDate: null,
-    showCorrectedUntilMonths: settings.showCorrectedUntilMonths,
+    dueDate: options.dueDate ?? null,
+    showCorrectedUntilMonths:
+      options.showCorrectedUntilMonths ?? settings.showCorrectedUntilMonths,
     ageFormat: settings.ageFormat,
   }),
   calendarAgeLabel: null,
@@ -169,5 +174,71 @@ describe("buildWeekAgeSegments", () => {
     const segments = buildWeekAgeSegments(row, "ymd", birthDate);
 
     expect(segments).not.toBeNull();
+  });
+
+  test("早産児・出産予定日前は在胎週数基準で色分け・ラベル表示される", () => {
+    const birthDate = "2026-01-01";
+    const dueDate = "2026-03-01"; // 早産（在胎221日 < 259日）
+    const row = [
+      "2026-01-05",
+      "2026-01-06",
+      "2026-01-07",
+      "2026-01-08",
+      "2026-01-09",
+      "2026-01-10",
+      "2026-01-11",
+    ].map((d) => makeDay(d, birthDate, true, { dueDate }));
+
+    const segments = buildWeekAgeSegments(row, "ymd", birthDate);
+
+    expect(segments).not.toBeNull();
+    const withLabel = segments!.filter((s) => s.label != null);
+    expect(withLabel.length).toBeGreaterThan(0);
+    withLabel.forEach((s) => expect(s.label).toMatch(/^在胎 \d+週$/));
+  });
+
+  test("早産児・出産予定日以降は修正月齢基準で色分け・ラベル表示され、暦月齢は使われない", () => {
+    const birthDate = "2026-01-01";
+    const dueDate = "2026-03-01"; // 早産（在胎221日 < 259日）
+    const row = [
+      "2026-06-01",
+      "2026-06-02",
+      "2026-06-03",
+      "2026-06-04",
+      "2026-06-05",
+      "2026-06-06",
+      "2026-06-07",
+    ].map((d) => makeDay(d, birthDate, true, { dueDate }));
+
+    const segments = buildWeekAgeSegments(row, "ymd", birthDate);
+
+    expect(segments).not.toBeNull();
+    const withLabel = segments!.filter((s) => s.label != null);
+    expect(withLabel.length).toBeGreaterThan(0);
+    withLabel.forEach((s) => expect(s.label).toMatch(/^修正 /));
+  });
+
+  test("showCorrectedUntilMonthsの期限を超えても週帯は修正月齢基準の表示を継続する", () => {
+    const birthDate = "2026-01-01";
+    const dueDate = "2026-03-01"; // 早産（在胎221日 < 259日）
+    // 出産予定日から1年以上経過（showCorrectedUntilMonths=1では通常修正月齢が非表示になる期間）
+    const row = [
+      "2027-04-01",
+      "2027-04-02",
+      "2027-04-03",
+      "2027-04-04",
+      "2027-04-05",
+      "2027-04-06",
+      "2027-04-07",
+    ].map((d) =>
+      makeDay(d, birthDate, true, { dueDate, showCorrectedUntilMonths: 1 })
+    );
+
+    const segments = buildWeekAgeSegments(row, "ymd", birthDate);
+
+    expect(segments).not.toBeNull();
+    const withLabel = segments!.filter((s) => s.label != null);
+    expect(withLabel.length).toBeGreaterThan(0);
+    withLabel.forEach((s) => expect(s.label).toMatch(/^修正 /));
   });
 });
