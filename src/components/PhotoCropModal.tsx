@@ -20,6 +20,7 @@ import {
   calculatePanBounds,
   clamp,
 } from "@/utils/cropMath";
+import { generateCropPreviewAsync } from "@/utils/photo";
 
 type Props = {
   visible: boolean;
@@ -51,6 +52,7 @@ const PhotoCropModal: React.FC<Props> = ({
   const insets = useSafeAreaInsets();
   const [cropAreaSize, setCropAreaSize] = useState({ width: 0, height: 0 });
   const [isSaving, setIsSaving] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
 
   const userScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -65,6 +67,27 @@ const PhotoCropModal: React.FC<Props> = ({
     translateY.value = 0;
     setIsSaving(false);
   }, [visible, userScale, translateX, translateY]);
+
+  // ピンチ操作中の描画負荷を抑えるため、表示にはダウンスケールしたプレビュー画像を使う。
+  // クロップ座標の計算は常に元画像(imageWidth/imageHeight)基準で行うため画質に影響しない。
+  useEffect(() => {
+    if (!visible) {
+      setPreviewUri(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewUri(null);
+    generateCropPreviewAsync(imageUri, imageWidth, imageHeight)
+      .then((uri) => {
+        if (!cancelled) setPreviewUri(uri);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewUri(imageUri);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, imageUri, imageWidth, imageHeight]);
 
   const frame = useMemo(
     () =>
@@ -212,7 +235,8 @@ const PhotoCropModal: React.FC<Props> = ({
   // 枠の外側を暗くするための帯（上下左右）。枠は常にcropArea中央に配置される前提で計算する。
   const marginX = Math.max(0, (cropAreaSize.width - frame.width) / 2);
   const marginY = Math.max(0, (cropAreaSize.height - frame.height) / 2);
-  const isReady = frame.width > 0 && frame.height > 0 && baseScale > 0;
+  const isReady =
+    frame.width > 0 && frame.height > 0 && baseScale > 0 && !!previewUri;
 
   return (
     <Modal
@@ -262,7 +286,7 @@ const PhotoCropModal: React.FC<Props> = ({
                 <GestureDetector gesture={composedGesture}>
                   <Animated.View style={[styles.panLayer, translateStyle]}>
                     <Animated.Image
-                      source={{ uri: imageUri }}
+                      source={{ uri: previewUri ?? imageUri }}
                       style={[imageSizeStyle, scaleStyle]}
                     />
                   </Animated.View>
