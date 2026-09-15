@@ -60,20 +60,19 @@ const buildFileName = (prefix: string) => {
 
 const calculateResize = (
   width?: number,
-  height?: number,
-  maxLongEdge: number = MAX_LONG_EDGE
+  height?: number
 ): ImageManipulator.Action[] => {
   if (!width || !height) {
     // 画像の寸法が取得できない場合でも、縦横 1600px の範囲に収める
-    return [{ resize: { width: maxLongEdge } }];
+    return [{ resize: { width: MAX_LONG_EDGE } }];
   }
 
   const longEdge = Math.max(width, height);
-  if (longEdge <= maxLongEdge) {
+  if (longEdge <= MAX_LONG_EDGE) {
     return [];
   }
 
-  const ratio = longEdge / maxLongEdge;
+  const ratio = longEdge / MAX_LONG_EDGE;
   return width >= height
     ? [{ resize: { width: Math.round(width / ratio) } }]
     : [{ resize: { height: Math.round(height / ratio) } }];
