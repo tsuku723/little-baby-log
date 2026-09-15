@@ -13,7 +13,7 @@ export class PhotoPermissionDeniedError extends Error {
 
 const PHOTO_DIR = `${FileSystem.documentDirectory}achievement-photos/`;
 const PROFILE_PHOTO_DIR = `${FileSystem.documentDirectory}profile-photos/`;
-const MAX_LONG_EDGE = 1600;
+export const MAX_LONG_EDGE = 1600;
 const JPEG_QUALITY = 0.75;
 
 const isSafePhotoPath = (path: string): boolean =>
@@ -76,6 +76,28 @@ const calculateResize = (
   return width >= height
     ? [{ resize: { width: Math.round(width / ratio) } }]
     : [{ resize: { height: Math.round(height / ratio) } }];
+};
+
+/**
+ * トリミングUIでの表示専用に、元画像を縦横 1600px 以内へ縮小したプレビューを生成する。
+ * クロップ座標の計算には使わず、あくまで描画負荷軽減のための表示用画像。
+ * 既に 1600px 以内の場合は縮小せず元のURIをそのまま返す。
+ */
+export const generateCropPreviewAsync = async (
+  sourceUri: string,
+  width: number,
+  height: number
+): Promise<string> => {
+  const actions = calculateResize(width, height);
+  if (actions.length === 0) {
+    return sourceUri;
+  }
+  const manipulated = await ImageManipulator.manipulateAsync(
+    sourceUri,
+    actions,
+    { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+  );
+  return manipulated.uri;
 };
 
 /** 寸法が確定している、トリミングUIに渡せる状態の写真。 */
