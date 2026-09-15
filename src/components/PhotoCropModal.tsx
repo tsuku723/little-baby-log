@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Gesture,
@@ -285,10 +292,12 @@ const PhotoCropModal: React.FC<Props> = ({
               <View style={styles.imageBleedLayer}>
                 <GestureDetector gesture={composedGesture}>
                   <Animated.View style={[styles.panLayer, translateStyle]}>
-                    <Animated.Image
-                      source={{ uri: previewUri ?? imageUri }}
-                      style={[imageSizeStyle, scaleStyle]}
-                    />
+                    <Animated.View style={scaleStyle}>
+                      <Image
+                        source={{ uri: previewUri ?? imageUri }}
+                        style={imageSizeStyle}
+                      />
+                    </Animated.View>
                   </Animated.View>
                 </GestureDetector>
               </View>
