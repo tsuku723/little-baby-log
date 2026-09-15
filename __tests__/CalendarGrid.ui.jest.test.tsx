@@ -71,4 +71,49 @@ describe("CalendarGrid week age bar", () => {
 
     expect(queryAllByText(/ヶ月/).length).toBe(0);
   });
+
+  test("早産児・出産予定日前の月では在胎週数の帯が表示される", () => {
+    const birthDate = "2026-01-01";
+    const dueDate = "2026-03-01"; // 早産（在胎221日 < 259日）
+    const monthView = buildCalendarMonthView({
+      anchorDate: new Date(2026, 0, 1),
+      settings: baseSettings,
+      birthDate,
+      dueDate,
+    });
+
+    const { queryAllByText } = render(
+      <CalendarGrid
+        days={monthView.days}
+        onPressDay={jest.fn()}
+        ageFormat="md"
+        birthDate={birthDate}
+      />
+    );
+
+    expect(queryAllByText(/在胎 \d+週/).length).toBeGreaterThan(0);
+  });
+
+  test("早産児・出産予定日以降の月では修正月齢の帯が表示され、暦月齢は使われない", () => {
+    const birthDate = "2026-01-01";
+    const dueDate = "2026-03-01"; // 早産（在胎221日 < 259日）
+    const monthView = buildCalendarMonthView({
+      anchorDate: new Date(2026, 5, 1), // 2026-06
+      settings: baseSettings,
+      birthDate,
+      dueDate,
+    });
+
+    const { queryAllByText } = render(
+      <CalendarGrid
+        days={monthView.days}
+        onPressDay={jest.fn()}
+        ageFormat="md"
+        birthDate={birthDate}
+      />
+    );
+
+    expect(queryAllByText(/^修正 /).length).toBeGreaterThan(0);
+    expect(queryAllByText(/^暦 /).length).toBe(0);
+  });
 });

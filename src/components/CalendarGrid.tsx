@@ -17,7 +17,7 @@ const segmentColor = (totalMonths: number | null): string => {
   if (totalMonths == null) return "transparent";
   return totalMonths % 2 === 0
     ? COLORS.ageBadgeChronologicalBg
-    : COLORS.accentSub;
+    : COLORS.ageBadgeCorrectedBg;
 };
 
 const CalendarGrid: React.FC<Props> = ({
