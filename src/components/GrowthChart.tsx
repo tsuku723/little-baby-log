@@ -22,6 +22,8 @@ type Props = {
   gender: Gender | null;
   birthDate: string;
   dueDate: string | null;
+  // 実月齢（出生日起点）でのX軸上限。nullなら範囲を絞らない（すべて表示）
+  rangeMaxMonths: number | null;
 };
 
 const CHART_HEIGHT = 320;
@@ -104,6 +106,7 @@ const GrowthChart: React.FC<Props> = ({
   gender,
   birthDate,
   dueDate,
+  rangeMaxMonths,
 }) => {
   const [width, setWidth] = useState<number>(0);
 
@@ -120,8 +123,13 @@ const GrowthChart: React.FC<Props> = ({
     [birthDate, dueDate]
   );
 
+  // 範囲タブは実月齢基準のため、プロット軸（修正月齢）に変換してから境界に使う
+  const correctedRangeMaxMonths =
+    rangeMaxMonths === null ? null : rangeMaxMonths - offsetMonths;
+
   // 実測値の位置は修正月齢（出産予定日前ならマイナス）で決める。
   // 基準曲線も修正月齢基準のため、プロット位置はこの軸のまま揃える
+  // 選択範囲より先の記録は非表示（一覧側は従来通り全期間表示のため単純にクリップでよい）
   const dataPoints = useMemo(() => {
     return records
       .map((record) => {
@@ -136,22 +144,31 @@ const GrowthChart: React.FC<Props> = ({
         return { months, value };
       })
       .filter((p): p is { months: number; value: number } => p !== null)
+      .filter(
+        (p) =>
+          correctedRangeMaxMonths === null ||
+          p.months <= correctedRangeMaxMonths + 1e-9
+      )
       .sort((a, b) => a.months - b.months);
-  }, [birthDate, dueDate, field, records]);
+  }, [birthDate, correctedRangeMaxMonths, dueDate, field, records]);
 
   const standardPoints = gender
     ? GROWTH_STANDARDS[gender][measurementType]
     : [];
   const hasStandard = standardPoints.length > 0;
 
-  // 基準線の月齢範囲と実測値の月齢範囲（マイナス含む）を包含するX軸レンジ
+  // 基準線の月齢範囲と実測値の月齢範囲（マイナス含む）を包含するX軸レンジ。
+  // 範囲タブ選択時は母子手帳のような見やすい縮尺にするため、選択範囲の上限で固定する
   const xMax = useMemo(() => {
+    if (correctedRangeMaxMonths !== null) {
+      return Math.max(12, Math.ceil(correctedRangeMaxMonths));
+    }
     const standardMax = hasStandard
       ? standardPoints[standardPoints.length - 1].months
       : 0;
     const dataMax = dataPoints.reduce((max, p) => Math.max(max, p.months), 0);
     return Math.max(12, Math.ceil(Math.max(standardMax, dataMax)));
-  }, [dataPoints, hasStandard, standardPoints]);
+  }, [correctedRangeMaxMonths, dataPoints, hasStandard, standardPoints]);
 
   const xMin = useMemo(() => {
     const dataMin = dataPoints.reduce((min, p) => Math.min(min, p.months), 0);
@@ -161,7 +178,12 @@ const GrowthChart: React.FC<Props> = ({
   const standardLines = useMemo(() => {
     if (!gender || !hasStandard) return null;
     const first = standardPoints[0].months;
-    const last = standardPoints[standardPoints.length - 1].months;
+    const rawLast = standardPoints[standardPoints.length - 1].months;
+    const last =
+      correctedRangeMaxMonths !== null
+        ? Math.min(rawLast, correctedRangeMaxMonths)
+        : rawLast;
+    if (last < first) return null;
     const keys = [
       "median",
       "sd1Upper",
@@ -195,7 +217,13 @@ const GrowthChart: React.FC<Props> = ({
       }
     }
     return lines;
-  }, [gender, hasStandard, measurementType, standardPoints]);
+  }, [
+    correctedRangeMaxMonths,
+    gender,
+    hasStandard,
+    measurementType,
+    standardPoints,
+  ]);
 
   const { yMin, yMax } = useMemo(() => {
     const values: number[] = dataPoints.map((p) => p.value);
