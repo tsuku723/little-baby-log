@@ -68,6 +68,8 @@ export const calculateMilestones = (params: {
   }
 
   for (let month = 1; month <= MONTH_MILESTONE_LIMIT; month += 1) {
+    // 12ヶ月・24ヶ月は誕生日マイルストーンと同日になり通知が重複するためスキップする
+    if (month === 12 || month === 24) continue;
     milestones.push({
       key: `chronological-${month}`,
       date: addMonthsIso(birthDate, month),

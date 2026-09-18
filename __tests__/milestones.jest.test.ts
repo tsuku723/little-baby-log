@@ -19,7 +19,10 @@ describe("calculateMilestones", () => {
     expect(keys).toContain("birthday-2");
     expect(keys).toContain("birthday-100");
     expect(keys).toContain("chronological-1");
-    expect(keys).toContain("chronological-24");
+    expect(keys).toContain("chronological-23");
+    // 12ヶ月・24ヶ月は誕生日と同日になるため生成しない
+    expect(keys).not.toContain("chronological-12");
+    expect(keys).not.toContain("chronological-24");
     expect(keys.some((k) => k.startsWith("corrected-"))).toBe(false);
   });
 
