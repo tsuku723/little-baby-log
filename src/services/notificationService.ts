@@ -1,7 +1,6 @@
 import * as Notifications from "expo-notifications";
 
 import type { UserProfile } from "@/state/AppStateContext";
-import { todayIsoDate } from "@/utils/dateUtils";
 import { calculateMilestones } from "@/utils/milestones";
 
 const NOTIFICATION_HOUR = 9;
@@ -48,18 +47,18 @@ export const scheduleMilestoneNotificationsForUserAsync = async (
     birthDate: user.birthDate,
     dueDate: user.dueDate,
   });
-  const todayIso = todayIsoDate();
+  const now = new Date();
   const windowEnd = new Date();
   windowEnd.setDate(windowEnd.getDate() + SCHEDULE_WINDOW_DAYS);
 
   const targets = milestones
-    .filter((milestone) => milestone.date > todayIso)
     .map((milestone) => {
       const [y, m, d] = milestone.date.split("-").map(Number);
       const triggerDate = new Date(y, m - 1, d, NOTIFICATION_HOUR, 0, 0);
       return { milestone, triggerDate };
     })
-    .filter(({ triggerDate }) => triggerDate <= windowEnd);
+    // 当日でも通知時刻(9時)を過ぎていなければ対象に含める
+    .filter(({ triggerDate }) => triggerDate > now && triggerDate <= windowEnd);
 
   await Promise.all(
     targets.map(({ milestone, triggerDate }) =>
