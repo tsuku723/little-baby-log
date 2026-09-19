@@ -1,7 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useId, useMemo, useState } from "react";
 import { LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 
-import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
+import Svg, {
+  Circle,
+  ClipPath,
+  Defs,
+  G,
+  Line,
+  Polyline,
+  Rect,
+  Text as SvgText,
+} from "react-native-svg";
 
 import { COLORS } from "@/constants/colors";
 import {
@@ -109,6 +118,7 @@ const GrowthChart: React.FC<Props> = ({
   rangeMaxMonths,
 }) => {
   const [width, setWidth] = useState<number>(0);
+  const plotClipId = `growth-chart-plot-clip-${useId()}`;
 
   const onLayout = (e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
@@ -341,6 +351,16 @@ const GrowthChart: React.FC<Props> = ({
     <View style={styles.container} onLayout={onLayout}>
       {width > 0 ? (
         <Svg width={width} height={CHART_HEIGHT}>
+          <Defs>
+            <ClipPath id={plotClipId}>
+              <Rect
+                x={PADDING.left}
+                y={PADDING.top}
+                width={plotWidth}
+                height={plotHeight}
+              />
+            </ClipPath>
+          </Defs>
           {yTicks.map((v) => (
             <React.Fragment key={`y-${v}`}>
               <Line
@@ -406,8 +426,10 @@ const GrowthChart: React.FC<Props> = ({
 
           {standardLines ? (
             <>
-              {(["sd2Upper", "sd1Upper", "sd1Lower", "sd2Lower"] as const).map(
-                (key) => (
+              <G clipPath={`url(#${plotClipId})`}>
+                {(
+                  ["sd2Upper", "sd1Upper", "sd1Lower", "sd2Lower"] as const
+                ).map((key) => (
                   <Polyline
                     key={key}
                     points={toPolylinePoints(
@@ -420,34 +442,34 @@ const GrowthChart: React.FC<Props> = ({
                     stroke={STANDARD_LINE_COLOR}
                     strokeWidth={1}
                   />
-                )
-              )}
-              <Polyline
-                points={toPolylinePoints(
-                  standardLines.median.map((p) => ({
-                    x: scaleX(p.months),
-                    y: scaleY(p.value),
-                  }))
-                )}
-                fill="none"
-                stroke={STANDARD_MEDIAN_COLOR}
-                strokeWidth={1.5}
-              />
-              {(["sd25Lower", "sd30Lower"] as const).map((key) => (
+                ))}
                 <Polyline
-                  key={key}
                   points={toPolylinePoints(
-                    standardLines[key].map((p) => ({
+                    standardLines.median.map((p) => ({
                       x: scaleX(p.months),
                       y: scaleY(p.value),
                     }))
                   )}
                   fill="none"
-                  stroke={STANDARD_DASHED_COLOR}
-                  strokeWidth={1}
-                  strokeDasharray="4,3"
+                  stroke={STANDARD_MEDIAN_COLOR}
+                  strokeWidth={1.5}
                 />
-              ))}
+                {(["sd25Lower", "sd30Lower"] as const).map((key) => (
+                  <Polyline
+                    key={key}
+                    points={toPolylinePoints(
+                      standardLines[key].map((p) => ({
+                        x: scaleX(p.months),
+                        y: scaleY(p.value),
+                      }))
+                    )}
+                    fill="none"
+                    stroke={STANDARD_DASHED_COLOR}
+                    strokeWidth={1}
+                    strokeDasharray="4,3"
+                  />
+                ))}
+              </G>
               {(
                 [
                   ["sd2Upper", STANDARD_LINE_COLOR],
@@ -478,17 +500,19 @@ const GrowthChart: React.FC<Props> = ({
           ) : null}
 
           {dataPoints.length > 1 ? (
-            <Polyline
-              points={toPolylinePoints(
-                dataPoints.map((p) => ({
-                  x: scaleX(p.months),
-                  y: scaleY(p.value),
-                }))
-              )}
-              fill="none"
-              stroke={COLORS.accentMain}
-              strokeWidth={2}
-            />
+            <G clipPath={`url(#${plotClipId})`}>
+              <Polyline
+                points={toPolylinePoints(
+                  dataPoints.map((p) => ({
+                    x: scaleX(p.months),
+                    y: scaleY(p.value),
+                  }))
+                )}
+                fill="none"
+                stroke={COLORS.accentMain}
+                strokeWidth={2}
+              />
+            </G>
           ) : null}
           {visibleDataPoints.map((p, index) => (
             <Circle
