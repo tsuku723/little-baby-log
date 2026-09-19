@@ -256,7 +256,14 @@ const GrowthChart: React.FC<Props> = ({
   // X軸の目盛りは実月齢（出生日起点、常に0,1,2...）を主軸にする。
   // 早産児は目盛りごとに副ラベルとして、出産予定日前なら在胎週数（30w）、以降なら修正月齢（修1）を添える
   const chronologicalMax = Math.ceil(xMax + offsetMonths);
-  const chronStep = chronologicalMax <= 18 ? 1 : chronologicalMax <= 36 ? 3 : 6;
+  const chronStep =
+    chronologicalMax <= 18
+      ? 1
+      : chronologicalMax <= 36
+        ? 3
+        : chronologicalMax <= 72
+          ? 6
+          : 12;
   const xTicks: {
     chronological: number;
     corrected: number;
