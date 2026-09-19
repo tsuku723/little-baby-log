@@ -129,7 +129,8 @@ const GrowthChart: React.FC<Props> = ({
 
   // 実測値の位置は修正月齢（出産予定日前ならマイナス）で決める。
   // 基準曲線も修正月齢基準のため、プロット位置はこの軸のまま揃える
-  // 選択範囲より先の記録は非表示（一覧側は従来通り全期間表示のため単純にクリップでよい）
+  // 範囲より先の記録も含めて全期間分保持する（折れ線は範囲外へ伸びる分まで描画し、
+  // マーカー（点）だけを範囲内に絞る。線が途中でぷつっと途切れず境界へ向かう様子が見える）
   const dataPoints = useMemo(() => {
     return records
       .map((record) => {
@@ -144,13 +145,14 @@ const GrowthChart: React.FC<Props> = ({
         return { months, value };
       })
       .filter((p): p is { months: number; value: number } => p !== null)
-      .filter(
-        (p) =>
-          correctedRangeMaxMonths === null ||
-          p.months <= correctedRangeMaxMonths + 1e-9
-      )
       .sort((a, b) => a.months - b.months);
-  }, [birthDate, correctedRangeMaxMonths, dueDate, field, records]);
+  }, [birthDate, dueDate, field, records]);
+
+  // マーカー（点）とY軸再計算の対象は選択範囲内のみ
+  const visibleDataPoints = useMemo(() => {
+    if (correctedRangeMaxMonths === null) return dataPoints;
+    return dataPoints.filter((p) => p.months <= correctedRangeMaxMonths + 1e-9);
+  }, [correctedRangeMaxMonths, dataPoints]);
 
   const standardPoints = gender
     ? GROWTH_STANDARDS[gender][measurementType]
@@ -175,14 +177,11 @@ const GrowthChart: React.FC<Props> = ({
     return Math.min(-offsetMonths, dataMin);
   }, [dataPoints, offsetMonths]);
 
+  // 基準曲線は選択範囲で打ち切らず全期間分描画する（範囲外は描画領域外に自然にクリップされる）
   const standardLines = useMemo(() => {
     if (!gender || !hasStandard) return null;
     const first = standardPoints[0].months;
-    const rawLast = standardPoints[standardPoints.length - 1].months;
-    const last =
-      correctedRangeMaxMonths !== null
-        ? Math.min(rawLast, correctedRangeMaxMonths)
-        : rawLast;
+    const last = standardPoints[standardPoints.length - 1].months;
     if (last < first) return null;
     const keys = [
       "median",
@@ -217,19 +216,25 @@ const GrowthChart: React.FC<Props> = ({
       }
     }
     return lines;
-  }, [
-    correctedRangeMaxMonths,
-    gender,
-    hasStandard,
-    measurementType,
-    standardPoints,
-  ]);
+  }, [gender, hasStandard, measurementType, standardPoints]);
 
+  // Y軸は選択範囲内のデータ・基準線のみを対象に再計算する（母子手帳のようなズーム表示にするため）
   const { yMin, yMax } = useMemo(() => {
-    const values: number[] = dataPoints.map((p) => p.value);
+    const withinRange = (months: number) =>
+      correctedRangeMaxMonths === null ||
+      months <= correctedRangeMaxMonths + 1e-9;
+    const values: number[] = visibleDataPoints.map((p) => p.value);
     if (standardLines) {
-      values.push(...standardLines.sd30Lower.map((p) => p.value));
-      values.push(...standardLines.sd2Upper.map((p) => p.value));
+      values.push(
+        ...standardLines.sd30Lower
+          .filter((p) => withinRange(p.months))
+          .map((p) => p.value)
+      );
+      values.push(
+        ...standardLines.sd2Upper
+          .filter((p) => withinRange(p.months))
+          .map((p) => p.value)
+      );
     }
     const base = BASE_Y_RANGE[measurementType];
     if (values.length === 0) return { yMin: base.min, yMax: base.max };
@@ -239,7 +244,12 @@ const GrowthChart: React.FC<Props> = ({
       yMin: Math.min(base.min, Math.floor(Math.min(...values) / step) * step),
       yMax: Math.max(base.max, Math.ceil(Math.max(...values) / step) * step),
     };
-  }, [dataPoints, measurementType, standardLines]);
+  }, [
+    correctedRangeMaxMonths,
+    measurementType,
+    standardLines,
+    visibleDataPoints,
+  ]);
 
   const plotWidth = Math.max(0, width - PADDING.left - PADDING.right);
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
@@ -316,7 +326,16 @@ const GrowthChart: React.FC<Props> = ({
     }
   }
 
-  const hasAnythingToPlot = dataPoints.length > 0 || standardLines !== null;
+  const hasAnythingToPlot =
+    visibleDataPoints.length > 0 || standardLines !== null;
+
+  // 基準線ラベルは選択範囲の境界（xMax）を超えない直近の点に付ける
+  const findLabelAnchor = (points: { months: number; value: number }[]) => {
+    for (let i = points.length - 1; i >= 0; i -= 1) {
+      if (points[i].months <= xMax + 1e-9) return points[i];
+    }
+    return points[0];
+  };
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -440,13 +459,13 @@ const GrowthChart: React.FC<Props> = ({
                   ["sd30Lower", STANDARD_DASHED_COLOR],
                 ] as const
               ).map(([key, color]) => {
-                const last = standardLines[key][standardLines[key].length - 1];
-                if (!last) return null;
+                const anchor = findLabelAnchor(standardLines[key]);
+                if (!anchor) return null;
                 return (
                   <SvgText
                     key={`label-${key}`}
-                    x={scaleX(last.months) + 3}
-                    y={scaleY(last.value) + 3}
+                    x={scaleX(anchor.months) + 3}
+                    y={scaleY(anchor.value) + 3}
                     fontSize={8}
                     fill={color}
                     textAnchor="start"
@@ -471,7 +490,7 @@ const GrowthChart: React.FC<Props> = ({
               strokeWidth={2}
             />
           ) : null}
-          {dataPoints.map((p, index) => (
+          {visibleDataPoints.map((p, index) => (
             <Circle
               key={`pt-${index}`}
               cx={scaleX(p.months)}
