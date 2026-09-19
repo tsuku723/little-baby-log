@@ -98,6 +98,30 @@ describe("notificationService", () => {
       // days-100(生後100日目)は180日以内なので含まれる
       expect(scheduledIdentifiers).toContain("milestone-user-1-days-100");
     });
+
+    it("マイルストーン当日でも通知時刻(9時)前なら予約する", async () => {
+      // 2024-04-10が生後100日目。当日の8時時点。
+      jest.useFakeTimers().setSystemTime(new Date(2024, 3, 10, 8, 0, 0));
+
+      await scheduleMilestoneNotificationsForUserAsync(baseUser);
+
+      const scheduledIdentifiers = mockSchedule.mock.calls.map(
+        (call) => call[0].identifier
+      );
+      expect(scheduledIdentifiers).toContain("milestone-user-1-days-100");
+    });
+
+    it("マイルストーン当日でも通知時刻(9時)を過ぎていれば予約しない", async () => {
+      // 2024-04-10が生後100日目。当日の10時時点。
+      jest.useFakeTimers().setSystemTime(new Date(2024, 3, 10, 10, 0, 0));
+
+      await scheduleMilestoneNotificationsForUserAsync(baseUser);
+
+      const scheduledIdentifiers = mockSchedule.mock.calls.map(
+        (call) => call[0].identifier
+      );
+      expect(scheduledIdentifiers).not.toContain("milestone-user-1-days-100");
+    });
   });
 
   describe("cancelMilestoneNotificationsForUserAsync", () => {
