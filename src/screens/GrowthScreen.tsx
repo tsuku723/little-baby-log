@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -26,7 +26,11 @@ import {
 } from "@/navigation";
 import { GrowthRecord, useActiveUser } from "@/state/AppStateContext";
 import { useGrowthRecords } from "@/state/GrowthRecordsContext";
-import { toIsoDateString, toUtcDateOnly } from "@/utils/dateUtils";
+import {
+  toDecimalMonths,
+  toIsoDateString,
+  toUtcDateOnly,
+} from "@/utils/dateUtils";
 
 type Props = NativeStackScreenProps<GrowthStackParamList, "GrowthTop">;
 type RootNavigation = NavigationProp<RootStackParamList & TabParamList>;
@@ -62,6 +66,26 @@ const ALL_NUMERIC_FIELDS: NumericGrowthField[] = [
   "chestCircumferenceCm",
 ];
 
+type RangeKey = "y1" | "y2" | "y3" | "y6" | "all";
+
+// 実月齢（出生日起点）で区切る境界。基準線データの終端とは厳密には一致しないが許容する
+const RANGE_TABS: { key: RangeKey; label: string; maxMonths: number | null }[] =
+  [
+    { key: "y1", label: "〜1歳", maxMonths: 12 },
+    { key: "y2", label: "〜2歳", maxMonths: 24 },
+    { key: "y3", label: "〜3歳", maxMonths: 36 },
+    { key: "y6", label: "〜6歳", maxMonths: 72 },
+    { key: "all", label: "すべて", maxMonths: null },
+  ];
+
+// 対象の子どもの現在の実月齢に応じた範囲タブを自動選択する。該当なし（6歳以上等）は「すべて」
+const getDefaultRangeKey = (chronologicalMonths: number): RangeKey => {
+  const matched = RANGE_TABS.find(
+    (tab) => tab.maxMonths !== null && chronologicalMonths <= tab.maxMonths
+  );
+  return matched ? matched.key : "all";
+};
+
 const dateLabel = (iso: string): string => iso.replace(/-/g, "/");
 
 const GrowthScreen: React.FC<Props> = () => {
@@ -70,14 +94,28 @@ const GrowthScreen: React.FC<Props> = () => {
   const { loading, records, upsert, remove } = useGrowthRecords();
   const [measurementType, setMeasurementType] =
     useState<GrowthMeasurementType>("weight");
+  const [rangeKey, setRangeKey] = useState<RangeKey>("all");
   const todayIso = useMemo(
     () => toIsoDateString(toUtcDateOnly(new Date())),
     []
   );
 
+  // 対象の子どもを切り替えたら範囲タブの選択を自動選択にリセットする。
+  // 項目タブ（体重/身長/…）の切り替えでは維持したいため、依存は user.id のみにする
+  useEffect(() => {
+    if (!user) return;
+    const chronologicalMonths = toDecimalMonths(user.birthDate, todayIso);
+    setRangeKey(getDefaultRangeKey(chronologicalMonths));
+  }, [user?.id]);
+
   const activeTab = useMemo(
     () => MEASUREMENT_TABS.find((tab) => tab.key === measurementType)!,
     [measurementType]
+  );
+
+  const activeRangeTab = useMemo(
+    () => RANGE_TABS.find((tab) => tab.key === rangeKey)!,
+    [rangeKey]
   );
 
   // 一覧は新しい記録が上に来るよう日付降順（同日は作成日時降順）
@@ -233,6 +271,32 @@ const GrowthScreen: React.FC<Props> = () => {
                 );
               })}
             </View>
+            <View style={styles.rangeTabRow}>
+              {RANGE_TABS.map((tab) => {
+                const selected = tab.key === rangeKey;
+                return (
+                  <Pressable
+                    key={tab.key}
+                    style={[
+                      styles.rangeTabButton,
+                      selected && styles.rangeTabButtonSelected,
+                    ]}
+                    onPress={() => setRangeKey(tab.key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                  >
+                    <Text
+                      style={[
+                        styles.rangeTabLabel,
+                        selected && styles.rangeTabLabelSelected,
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
             {user ? (
               <GrowthChart
                 records={records}
@@ -240,6 +304,7 @@ const GrowthScreen: React.FC<Props> = () => {
                 gender={user.gender}
                 birthDate={user.birthDate}
                 dueDate={user.dueDate}
+                rangeMaxMonths={activeRangeTab.maxMonths}
               />
             ) : (
               <Text style={styles.empty}>
@@ -300,8 +365,8 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
@@ -312,10 +377,35 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.filterBackground,
   },
   tabLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textSecondary,
   },
   tabLabelSelected: {
+    color: COLORS.textPrimary,
+    fontWeight: "700",
+  },
+  rangeTabRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  rangeTabButton: {
+    flex: 1,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    alignItems: "center",
+  },
+  rangeTabButtonSelected: {
+    borderColor: COLORS.optionSelectedBorder,
+    backgroundColor: COLORS.filterBackground,
+  },
+  rangeTabLabel: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+  },
+  rangeTabLabelSelected: {
     color: COLORS.textPrimary,
     fontWeight: "700",
   },

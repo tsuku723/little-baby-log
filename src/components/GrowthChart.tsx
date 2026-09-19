@@ -1,7 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useId, useMemo, useState } from "react";
 import { LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 
-import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
+import Svg, {
+  Circle,
+  ClipPath,
+  Defs,
+  G,
+  Line,
+  Polyline,
+  Rect,
+  Text as SvgText,
+} from "react-native-svg";
 
 import { COLORS } from "@/constants/colors";
 import {
@@ -22,9 +31,11 @@ type Props = {
   gender: Gender | null;
   birthDate: string;
   dueDate: string | null;
+  // 実月齢（出生日起点）でのX軸上限。nullなら範囲を絞らない（すべて表示）
+  rangeMaxMonths: number | null;
 };
 
-const CHART_HEIGHT = 320;
+const CHART_HEIGHT = 380;
 const PADDING = { top: 12, right: 38, bottom: 40, left: 40 };
 const STANDARD_SAMPLE_STEP_MONTHS = 0.5;
 
@@ -104,8 +115,10 @@ const GrowthChart: React.FC<Props> = ({
   gender,
   birthDate,
   dueDate,
+  rangeMaxMonths,
 }) => {
   const [width, setWidth] = useState<number>(0);
+  const plotClipId = `growth-chart-plot-clip-${useId()}`;
 
   const onLayout = (e: LayoutChangeEvent) => {
     setWidth(e.nativeEvent.layout.width);
@@ -120,8 +133,14 @@ const GrowthChart: React.FC<Props> = ({
     [birthDate, dueDate]
   );
 
+  // 範囲タブは実月齢基準のため、プロット軸（修正月齢）に変換してから境界に使う
+  const correctedRangeMaxMonths =
+    rangeMaxMonths === null ? null : rangeMaxMonths - offsetMonths;
+
   // 実測値の位置は修正月齢（出産予定日前ならマイナス）で決める。
   // 基準曲線も修正月齢基準のため、プロット位置はこの軸のまま揃える
+  // 範囲より先の記録も含めて全期間分保持する（折れ線は範囲外へ伸びる分まで描画し、
+  // マーカー（点）だけを範囲内に絞る。線が途中でぷつっと途切れず境界へ向かう様子が見える）
   const dataPoints = useMemo(() => {
     return records
       .map((record) => {
@@ -139,29 +158,41 @@ const GrowthChart: React.FC<Props> = ({
       .sort((a, b) => a.months - b.months);
   }, [birthDate, dueDate, field, records]);
 
+  // マーカー（点）とY軸再計算の対象は選択範囲内のみ
+  const visibleDataPoints = useMemo(() => {
+    if (correctedRangeMaxMonths === null) return dataPoints;
+    return dataPoints.filter((p) => p.months <= correctedRangeMaxMonths + 1e-9);
+  }, [correctedRangeMaxMonths, dataPoints]);
+
   const standardPoints = gender
     ? GROWTH_STANDARDS[gender][measurementType]
     : [];
   const hasStandard = standardPoints.length > 0;
 
-  // 基準線の月齢範囲と実測値の月齢範囲（マイナス含む）を包含するX軸レンジ
+  // 基準線の月齢範囲と実測値の月齢範囲（マイナス含む）を包含するX軸レンジ。
+  // 範囲タブ選択時は母子手帳のような見やすい縮尺にするため、選択範囲の上限で固定する
   const xMax = useMemo(() => {
+    if (correctedRangeMaxMonths !== null) {
+      return Math.max(12, Math.ceil(correctedRangeMaxMonths));
+    }
     const standardMax = hasStandard
       ? standardPoints[standardPoints.length - 1].months
       : 0;
     const dataMax = dataPoints.reduce((max, p) => Math.max(max, p.months), 0);
     return Math.max(12, Math.ceil(Math.max(standardMax, dataMax)));
-  }, [dataPoints, hasStandard, standardPoints]);
+  }, [correctedRangeMaxMonths, dataPoints, hasStandard, standardPoints]);
 
   const xMin = useMemo(() => {
     const dataMin = dataPoints.reduce((min, p) => Math.min(min, p.months), 0);
     return Math.min(-offsetMonths, dataMin);
   }, [dataPoints, offsetMonths]);
 
+  // 基準曲線は選択範囲で打ち切らず全期間分描画する（範囲外は描画領域外に自然にクリップされる）
   const standardLines = useMemo(() => {
     if (!gender || !hasStandard) return null;
     const first = standardPoints[0].months;
     const last = standardPoints[standardPoints.length - 1].months;
+    if (last < first) return null;
     const keys = [
       "median",
       "sd1Upper",
@@ -197,11 +228,23 @@ const GrowthChart: React.FC<Props> = ({
     return lines;
   }, [gender, hasStandard, measurementType, standardPoints]);
 
+  // Y軸は選択範囲内のデータ・基準線のみを対象に再計算する（母子手帳のようなズーム表示にするため）
   const { yMin, yMax } = useMemo(() => {
-    const values: number[] = dataPoints.map((p) => p.value);
+    const withinRange = (months: number) =>
+      correctedRangeMaxMonths === null ||
+      months <= correctedRangeMaxMonths + 1e-9;
+    const values: number[] = visibleDataPoints.map((p) => p.value);
     if (standardLines) {
-      values.push(...standardLines.sd30Lower.map((p) => p.value));
-      values.push(...standardLines.sd2Upper.map((p) => p.value));
+      values.push(
+        ...standardLines.sd30Lower
+          .filter((p) => withinRange(p.months))
+          .map((p) => p.value)
+      );
+      values.push(
+        ...standardLines.sd2Upper
+          .filter((p) => withinRange(p.months))
+          .map((p) => p.value)
+      );
     }
     const base = BASE_Y_RANGE[measurementType];
     if (values.length === 0) return { yMin: base.min, yMax: base.max };
@@ -211,7 +254,12 @@ const GrowthChart: React.FC<Props> = ({
       yMin: Math.min(base.min, Math.floor(Math.min(...values) / step) * step),
       yMax: Math.max(base.max, Math.ceil(Math.max(...values) / step) * step),
     };
-  }, [dataPoints, measurementType, standardLines]);
+  }, [
+    correctedRangeMaxMonths,
+    measurementType,
+    standardLines,
+    visibleDataPoints,
+  ]);
 
   const plotWidth = Math.max(0, width - PADDING.left - PADDING.right);
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
@@ -228,41 +276,91 @@ const GrowthChart: React.FC<Props> = ({
   // X軸の目盛りは実月齢（出生日起点、常に0,1,2...）を主軸にする。
   // 早産児は目盛りごとに副ラベルとして、出産予定日前なら在胎週数（30w）、以降なら修正月齢（修1）を添える
   const chronologicalMax = Math.ceil(xMax + offsetMonths);
-  const chronStep = chronologicalMax <= 18 ? 1 : chronologicalMax <= 36 ? 3 : 6;
+  // 〜6歳・すべての範囲は月表示だと目盛りが多くなりすぎるため年齢（歳）表示に切り替える
+  const showYearAxis = rangeMaxMonths === 72 || rangeMaxMonths === null;
+  const chronStep =
+    chronologicalMax <= 18
+      ? 1
+      : chronologicalMax <= 36
+        ? 3
+        : chronologicalMax <= 72
+          ? 6
+          : 12;
+  const buildSubLabel = (chronological: number, corrected: number) => {
+    if (offsetMonths <= 1e-9) return null;
+    if (corrected < -1e-9) {
+      const gestational = gestationalWeeksAtChronologicalMonths({
+        chronologicalMonths: chronological,
+        birthDate,
+        dueDate,
+      });
+      return gestational ? `${gestational.weeks}w` : null;
+    }
+    return `修${Math.round(corrected)}`;
+  };
   const xTicks: {
     chronological: number;
     corrected: number;
+    label: string;
     subLabel: string | null;
   }[] = [];
-  for (
-    let chronological = 0;
-    chronological <= chronologicalMax + 1e-9;
-    chronological += chronStep
-  ) {
-    const corrected = chronological - offsetMonths;
-    if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
-    let subLabel: string | null = null;
-    if (offsetMonths > 1e-9) {
-      if (corrected < -1e-9) {
-        const gestational = gestationalWeeksAtChronologicalMonths({
-          chronologicalMonths: chronological,
-          birthDate,
-          dueDate,
-        });
-        subLabel = gestational ? `${gestational.weeks}w` : null;
-      } else {
-        subLabel = `修${Math.round(corrected)}`;
-      }
+  if (showYearAxis) {
+    const maxYears = Math.ceil(chronologicalMax / 12);
+    const yearStep = maxYears <= 10 ? 1 : maxYears <= 20 ? 2 : 5;
+    for (let year = 0; year <= maxYears + 1e-9; year += yearStep) {
+      const chronological = year * 12;
+      if (chronological > chronologicalMax + 1e-9) continue;
+      const corrected = chronological - offsetMonths;
+      if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
+      xTicks.push({
+        chronological,
+        corrected,
+        label: `${year}`,
+        subLabel: null,
+      });
     }
-    xTicks.push({ chronological, corrected, subLabel });
+  } else {
+    for (
+      let chronological = 0;
+      chronological <= chronologicalMax + 1e-9;
+      chronological += chronStep
+    ) {
+      const corrected = chronological - offsetMonths;
+      if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
+      xTicks.push({
+        chronological,
+        corrected,
+        label: `${chronological}`,
+        subLabel: buildSubLabel(chronological, corrected),
+      });
+    }
   }
 
-  const hasAnythingToPlot = dataPoints.length > 0 || standardLines !== null;
+  const hasAnythingToPlot =
+    visibleDataPoints.length > 0 || standardLines !== null;
+
+  // 基準線ラベルは選択範囲の境界（xMax）を超えない直近の点に付ける
+  const findLabelAnchor = (points: { months: number; value: number }[]) => {
+    for (let i = points.length - 1; i >= 0; i -= 1) {
+      if (points[i].months <= xMax + 1e-9) return points[i];
+    }
+    return points[0];
+  };
 
   return (
     <View style={styles.container} onLayout={onLayout}>
       {width > 0 ? (
         <Svg width={width} height={CHART_HEIGHT}>
+          <Defs>
+            <ClipPath id={plotClipId}>
+              <Rect
+                x={PADDING.left}
+                y={PADDING.top}
+                width={plotWidth}
+                height={plotHeight}
+              />
+            </ClipPath>
+          </Defs>
           {yTicks.map((v) => (
             <React.Fragment key={`y-${v}`}>
               <Line
@@ -301,7 +399,7 @@ const GrowthChart: React.FC<Props> = ({
                 fill={COLORS.textSecondary}
                 textAnchor="middle"
               >
-                {tick.chronological}
+                {tick.label}
               </SvgText>
               {tick.subLabel ? (
                 <SvgText
@@ -323,13 +421,15 @@ const GrowthChart: React.FC<Props> = ({
             fill={COLORS.textSecondary}
             textAnchor="end"
           >
-            実月齢（ヶ月）
+            {showYearAxis ? "実年齢（歳）" : "実月齢（ヶ月）"}
           </SvgText>
 
           {standardLines ? (
             <>
-              {(["sd2Upper", "sd1Upper", "sd1Lower", "sd2Lower"] as const).map(
-                (key) => (
+              <G clipPath={`url(#${plotClipId})`}>
+                {(
+                  ["sd2Upper", "sd1Upper", "sd1Lower", "sd2Lower"] as const
+                ).map((key) => (
                   <Polyline
                     key={key}
                     points={toPolylinePoints(
@@ -342,34 +442,34 @@ const GrowthChart: React.FC<Props> = ({
                     stroke={STANDARD_LINE_COLOR}
                     strokeWidth={1}
                   />
-                )
-              )}
-              <Polyline
-                points={toPolylinePoints(
-                  standardLines.median.map((p) => ({
-                    x: scaleX(p.months),
-                    y: scaleY(p.value),
-                  }))
-                )}
-                fill="none"
-                stroke={STANDARD_MEDIAN_COLOR}
-                strokeWidth={1.5}
-              />
-              {(["sd25Lower", "sd30Lower"] as const).map((key) => (
+                ))}
                 <Polyline
-                  key={key}
                   points={toPolylinePoints(
-                    standardLines[key].map((p) => ({
+                    standardLines.median.map((p) => ({
                       x: scaleX(p.months),
                       y: scaleY(p.value),
                     }))
                   )}
                   fill="none"
-                  stroke={STANDARD_DASHED_COLOR}
-                  strokeWidth={1}
-                  strokeDasharray="4,3"
+                  stroke={STANDARD_MEDIAN_COLOR}
+                  strokeWidth={1.5}
                 />
-              ))}
+                {(["sd25Lower", "sd30Lower"] as const).map((key) => (
+                  <Polyline
+                    key={key}
+                    points={toPolylinePoints(
+                      standardLines[key].map((p) => ({
+                        x: scaleX(p.months),
+                        y: scaleY(p.value),
+                      }))
+                    )}
+                    fill="none"
+                    stroke={STANDARD_DASHED_COLOR}
+                    strokeWidth={1}
+                    strokeDasharray="4,3"
+                  />
+                ))}
+              </G>
               {(
                 [
                   ["sd2Upper", STANDARD_LINE_COLOR],
@@ -381,13 +481,13 @@ const GrowthChart: React.FC<Props> = ({
                   ["sd30Lower", STANDARD_DASHED_COLOR],
                 ] as const
               ).map(([key, color]) => {
-                const last = standardLines[key][standardLines[key].length - 1];
-                if (!last) return null;
+                const anchor = findLabelAnchor(standardLines[key]);
+                if (!anchor) return null;
                 return (
                   <SvgText
                     key={`label-${key}`}
-                    x={scaleX(last.months) + 3}
-                    y={scaleY(last.value) + 3}
+                    x={scaleX(anchor.months) + 3}
+                    y={scaleY(anchor.value) + 3}
                     fontSize={8}
                     fill={color}
                     textAnchor="start"
@@ -400,19 +500,21 @@ const GrowthChart: React.FC<Props> = ({
           ) : null}
 
           {dataPoints.length > 1 ? (
-            <Polyline
-              points={toPolylinePoints(
-                dataPoints.map((p) => ({
-                  x: scaleX(p.months),
-                  y: scaleY(p.value),
-                }))
-              )}
-              fill="none"
-              stroke={COLORS.accentMain}
-              strokeWidth={2}
-            />
+            <G clipPath={`url(#${plotClipId})`}>
+              <Polyline
+                points={toPolylinePoints(
+                  dataPoints.map((p) => ({
+                    x: scaleX(p.months),
+                    y: scaleY(p.value),
+                  }))
+                )}
+                fill="none"
+                stroke={COLORS.accentMain}
+                strokeWidth={2}
+              />
+            </G>
           ) : null}
-          {dataPoints.map((p, index) => (
+          {visibleDataPoints.map((p, index) => (
             <Circle
               key={`pt-${index}`}
               cx={scaleX(p.months)}
@@ -462,7 +564,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   noteText: {
-    fontSize: 12,
+    fontSize: 10,
     color: COLORS.textSecondary,
     textAlign: "center",
     paddingHorizontal: 12,
