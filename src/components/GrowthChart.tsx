@@ -316,7 +316,7 @@ const GrowthChart: React.FC<Props> = ({
         chronological,
         corrected,
         label: `${year}`,
-        subLabel: buildSubLabel(chronological, corrected),
+        subLabel: null,
       });
     }
   } else {
