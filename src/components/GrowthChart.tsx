@@ -256,6 +256,8 @@ const GrowthChart: React.FC<Props> = ({
   // X軸の目盛りは実月齢（出生日起点、常に0,1,2...）を主軸にする。
   // 早産児は目盛りごとに副ラベルとして、出産予定日前なら在胎週数（30w）、以降なら修正月齢（修1）を添える
   const chronologicalMax = Math.ceil(xMax + offsetMonths);
+  // 〜6歳・すべての範囲は月表示だと目盛りが多くなりすぎるため年齢（歳）表示に切り替える
+  const showYearAxis = rangeMaxMonths === 72 || rangeMaxMonths === null;
   const chronStep =
     chronologicalMax <= 18
       ? 1
@@ -264,32 +266,54 @@ const GrowthChart: React.FC<Props> = ({
         : chronologicalMax <= 72
           ? 6
           : 12;
+  const buildSubLabel = (chronological: number, corrected: number) => {
+    if (offsetMonths <= 1e-9) return null;
+    if (corrected < -1e-9) {
+      const gestational = gestationalWeeksAtChronologicalMonths({
+        chronologicalMonths: chronological,
+        birthDate,
+        dueDate,
+      });
+      return gestational ? `${gestational.weeks}w` : null;
+    }
+    return `修${Math.round(corrected)}`;
+  };
   const xTicks: {
     chronological: number;
     corrected: number;
+    label: string;
     subLabel: string | null;
   }[] = [];
-  for (
-    let chronological = 0;
-    chronological <= chronologicalMax + 1e-9;
-    chronological += chronStep
-  ) {
-    const corrected = chronological - offsetMonths;
-    if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
-    let subLabel: string | null = null;
-    if (offsetMonths > 1e-9) {
-      if (corrected < -1e-9) {
-        const gestational = gestationalWeeksAtChronologicalMonths({
-          chronologicalMonths: chronological,
-          birthDate,
-          dueDate,
-        });
-        subLabel = gestational ? `${gestational.weeks}w` : null;
-      } else {
-        subLabel = `修${Math.round(corrected)}`;
-      }
+  if (showYearAxis) {
+    const maxYears = Math.ceil(chronologicalMax / 12);
+    const yearStep = maxYears <= 10 ? 1 : maxYears <= 20 ? 2 : 5;
+    for (let year = 0; year <= maxYears + 1e-9; year += yearStep) {
+      const chronological = year * 12;
+      if (chronological > chronologicalMax + 1e-9) continue;
+      const corrected = chronological - offsetMonths;
+      if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
+      xTicks.push({
+        chronological,
+        corrected,
+        label: `${year}`,
+        subLabel: buildSubLabel(chronological, corrected),
+      });
     }
-    xTicks.push({ chronological, corrected, subLabel });
+  } else {
+    for (
+      let chronological = 0;
+      chronological <= chronologicalMax + 1e-9;
+      chronological += chronStep
+    ) {
+      const corrected = chronological - offsetMonths;
+      if (corrected < xMin - 1e-9 || corrected > xMax + 1e-9) continue;
+      xTicks.push({
+        chronological,
+        corrected,
+        label: `${chronological}`,
+        subLabel: buildSubLabel(chronological, corrected),
+      });
+    }
   }
 
   const hasAnythingToPlot = dataPoints.length > 0 || standardLines !== null;
@@ -336,7 +360,7 @@ const GrowthChart: React.FC<Props> = ({
                 fill={COLORS.textSecondary}
                 textAnchor="middle"
               >
-                {tick.chronological}
+                {tick.label}
               </SvgText>
               {tick.subLabel ? (
                 <SvgText
@@ -358,7 +382,7 @@ const GrowthChart: React.FC<Props> = ({
             fill={COLORS.textSecondary}
             textAnchor="end"
           >
-            実月齢（ヶ月）
+            {showYearAxis ? "実年齢（歳）" : "実月齢（ヶ月）"}
           </SvgText>
 
           {standardLines ? (
