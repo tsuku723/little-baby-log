@@ -26,7 +26,7 @@ type Props = {
   rangeMaxMonths: number | null;
 };
 
-const CHART_HEIGHT = 320;
+const CHART_HEIGHT = 380;
 const PADDING = { top: 12, right: 38, bottom: 40, left: 40 };
 const STANDARD_SAMPLE_STEP_MONTHS = 0.5;
 
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   noteText: {
-    fontSize: 12,
+    fontSize: 10,
     color: COLORS.textSecondary,
     textAlign: "center",
     paddingHorizontal: 12,

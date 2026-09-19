@@ -365,8 +365,8 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.filterBackground,
   },
   tabLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textSecondary,
   },
   tabLabelSelected: {
@@ -390,8 +390,8 @@ const styles = StyleSheet.create({
   },
   rangeTabButton: {
     flex: 1,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.filterBackground,
   },
   rangeTabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: COLORS.textSecondary,
   },
   rangeTabLabelSelected: {
