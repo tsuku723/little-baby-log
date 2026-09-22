@@ -79,7 +79,7 @@ const RANGE_TABS: { key: RangeKey; label: string; maxMonths: number | null }[] =
   ];
 
 // 対象の子どもの現在の実月齢に応じた範囲タブを自動選択する。該当なし（6歳以上等）は「すべて」
-const getDefaultRangeKey = (chronologicalMonths: number): RangeKey => {
+export const getDefaultRangeKey = (chronologicalMonths: number): RangeKey => {
   const matched = RANGE_TABS.find(
     (tab) => tab.maxMonths !== null && chronologicalMonths <= tab.maxMonths
   );
