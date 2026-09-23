@@ -196,6 +196,87 @@ describe("ProfileManagerScreen UI (TS-UI-010)", () => {
     expect(mockNavigation.navigate).not.toHaveBeenCalled();
   });
 
+  test("編集ボタンタップでProfileEditへprofileId付きで遷移する", async () => {
+    mockAppState = {
+      users: [
+        {
+          id: "u1",
+          name: "テストちゃん",
+          birthDate: "2024-01-01",
+          dueDate: null,
+          settings: {
+            showCorrectedUntilMonths: 24,
+            ageFormat: "ymd",
+            showDaysSinceBirth: true,
+            lastViewedMonth: null,
+          },
+        },
+      ],
+      activeUserId: "u1",
+    };
+    const ProfileManagerScreen =
+      require("../src/screens/ProfileManagerScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileManagerScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const buttons = tree.root.findAllByType(
+      require("react-native").TouchableOpacity
+    );
+    // 0: 戻るボタン, 1: 編集ボタン, 2: 追加ボタン
+    const editTouchable = buttons[1];
+    await act(async () => {
+      editTouchable.props.onPress();
+    });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith("ProfileEdit", {
+      profileId: "u1",
+    });
+  });
+
+  test("上限未満: ＋新しいこどもを追加タップでprofileIdなしでProfileEditへ遷移する", async () => {
+    mockAppState = {
+      users: [
+        {
+          id: "u1",
+          name: "テストちゃん",
+          birthDate: "2024-01-01",
+          dueDate: null,
+          settings: {
+            showCorrectedUntilMonths: 24,
+            ageFormat: "ymd",
+            showDaysSinceBirth: true,
+            lastViewedMonth: null,
+          },
+        },
+      ],
+      activeUserId: "u1",
+    };
+    const ProfileManagerScreen =
+      require("../src/screens/ProfileManagerScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileManagerScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const buttons = tree.root.findAllByType(
+      require("react-native").TouchableOpacity
+    );
+    const addButton = buttons[buttons.length - 1];
+    await act(async () => {
+      addButton.props.onPress();
+    });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith("ProfileEdit");
+  });
+
   test("複数ユーザー: 全ユーザーのカードを表示", async () => {
     mockAppState = {
       users: [

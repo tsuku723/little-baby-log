@@ -291,6 +291,123 @@ describe("GrowthScreen UI", () => {
       expect(mockRemove).not.toHaveBeenCalled();
     });
 
+    test("身長タブで削除: heightCmのみundefinedにし他フィールドは保持される", async () => {
+      mockRecords = [
+        record({
+          id: "r1",
+          date: "2026-01-01",
+          weightKg: 3,
+          heightCm: 55,
+          headCircumferenceCm: 35,
+          chestCircumferenceCm: 33,
+        }),
+      ];
+      Platform.OS = "web";
+      (window as any).confirm = jest.fn().mockReturnValue(true);
+      const tree = await renderScreen();
+
+      await act(async () => {
+        findTabByLabel(tree, "身長").props.onPress();
+      });
+
+      const deleteButton = tree.root
+        .findAllByProps({ accessibilityLabel: "身長の記録を削除" })
+        .find((n: any) => typeof n.props.onPress === "function");
+      await act(async () => {
+        await deleteButton.props.onPress();
+      });
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "r1",
+          date: "2026-01-01",
+          weightKg: 3,
+          heightCm: undefined,
+          headCircumferenceCm: 35,
+          chestCircumferenceCm: 33,
+        })
+      );
+      expect(mockRemove).not.toHaveBeenCalled();
+    });
+
+    test("胸囲タブで削除: chestCircumferenceCmのみundefinedにし他フィールドは保持される", async () => {
+      mockRecords = [
+        record({
+          id: "r1",
+          date: "2026-01-01",
+          weightKg: 3,
+          heightCm: 55,
+          headCircumferenceCm: 35,
+          chestCircumferenceCm: 33,
+        }),
+      ];
+      Platform.OS = "web";
+      (window as any).confirm = jest.fn().mockReturnValue(true);
+      const tree = await renderScreen();
+
+      await act(async () => {
+        findTabByLabel(tree, "胸囲").props.onPress();
+      });
+
+      const deleteButton = tree.root
+        .findAllByProps({ accessibilityLabel: "胸囲の記録を削除" })
+        .find((n: any) => typeof n.props.onPress === "function");
+      await act(async () => {
+        await deleteButton.props.onPress();
+      });
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "r1",
+          date: "2026-01-01",
+          weightKg: 3,
+          heightCm: 55,
+          headCircumferenceCm: 35,
+          chestCircumferenceCm: undefined,
+        })
+      );
+      expect(mockRemove).not.toHaveBeenCalled();
+    });
+
+    test("頭囲タブで削除: headCircumferenceCmのみundefinedにし他フィールドは保持される", async () => {
+      mockRecords = [
+        record({
+          id: "r1",
+          date: "2026-01-01",
+          weightKg: 3,
+          heightCm: 55,
+          headCircumferenceCm: 35,
+          chestCircumferenceCm: 33,
+        }),
+      ];
+      Platform.OS = "web";
+      (window as any).confirm = jest.fn().mockReturnValue(true);
+      const tree = await renderScreen();
+
+      await act(async () => {
+        findTabByLabel(tree, "頭囲").props.onPress();
+      });
+
+      const deleteButton = tree.root
+        .findAllByProps({ accessibilityLabel: "頭囲の記録を削除" })
+        .find((n: any) => typeof n.props.onPress === "function");
+      await act(async () => {
+        await deleteButton.props.onPress();
+      });
+
+      expect(mockUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "r1",
+          date: "2026-01-01",
+          weightKg: 3,
+          heightCm: 55,
+          headCircumferenceCm: undefined,
+          chestCircumferenceCm: 33,
+        })
+      );
+      expect(mockRemove).not.toHaveBeenCalled();
+    });
+
     test("選択項目のみの記録: removeが呼ばれレコードごと削除される", async () => {
       mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
       Platform.OS = "web";
