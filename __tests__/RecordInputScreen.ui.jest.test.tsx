@@ -155,8 +155,9 @@ const mockNavigation = {
 };
 const mockRoute = { params: {} };
 
-// CI環境ではモジュール初回requireのオーバーヘッドで既定の5000msを超えることがあるため延長
-jest.setTimeout(20000);
+// フルスイート実行時はJestワーカーの並列実行によるリソース競合で
+// モジュール初回requireのオーバーヘッドが20000msを超えることがあるため延長
+jest.setTimeout(30000);
 
 describe("RecordInputScreen UI (TS-UI-005)", () => {
   beforeEach(() => {

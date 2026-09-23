@@ -65,6 +65,10 @@ jest.mock("expo-document-picker", () => ({
 const mockNavigation = { navigate: jest.fn() };
 const mockRoute = { params: {} };
 
+// フルスイート実行時はJestワーカーの並列実行によるリソース競合で
+// モジュール初回requireのオーバーヘッドが既定の5000msを超えることがあるため延長
+jest.setTimeout(20000);
+
 describe("SettingsScreen UI (TS-UI-008)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
