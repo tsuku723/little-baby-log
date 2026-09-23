@@ -307,6 +307,57 @@ describe("BackupService", () => {
       expect(result.achievements.u1[0].photoPath).toBeUndefined();
     });
 
+    test("正常系: ZIP 内にプロフィール写真がある場合 documentDirectory/profile-photos/ に保存し profilePhotoPath をローカルパスに書き換える", async () => {
+      const { restoreBackup } = require("../src/services/backupService");
+      const profileWithPhoto = {
+        ...baseProfile,
+        profilePhotoPath: "photos/profile_u1.jpg",
+      };
+      const backupWithPhoto = {
+        ...validBackupData,
+        profiles: [profileWithPhoto],
+      };
+
+      mockZipFile.mockImplementation((name: string) => {
+        if (name === "backup.json") return makeTextFile(backupWithPhoto);
+        if (name === "photos/profile_u1.jpg")
+          return makePhotoFile("base64profilephoto");
+        return null;
+      });
+
+      const result = await restoreBackup("file:///cache/backup.zip");
+
+      expect(mockWriteAsStringAsync).toHaveBeenCalledWith(
+        "file:///documents/profile-photos/profile_u1.jpg",
+        "base64profilephoto",
+        { encoding: "base64" }
+      );
+      expect(result.profiles[0].profilePhotoPath).toBe(
+        "profile-photos/profile_u1.jpg"
+      );
+    });
+
+    test("正常系: ZIP 内にプロフィール写真がない場合 profilePhotoPath を undefined にする", async () => {
+      const { restoreBackup } = require("../src/services/backupService");
+      const profileWithPhoto = {
+        ...baseProfile,
+        profilePhotoPath: "photos/missing.jpg",
+      };
+      const backupWithPhoto = {
+        ...validBackupData,
+        profiles: [profileWithPhoto],
+      };
+
+      mockZipFile.mockImplementation((name: string) => {
+        if (name === "backup.json") return makeTextFile(backupWithPhoto);
+        return null;
+      });
+
+      const result = await restoreBackup("file:///cache/backup.zip");
+
+      expect(result.profiles[0].profilePhotoPath).toBeUndefined();
+    });
+
     test("バリデーション: backup.json が ZIP に存在しない", async () => {
       const { restoreBackup } = require("../src/services/backupService");
       mockZipFile.mockReturnValue(null);
