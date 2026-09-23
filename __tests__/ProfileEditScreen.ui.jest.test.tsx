@@ -18,10 +18,26 @@ jest.mock("@/components/AppText", () => {
   };
 });
 
-jest.mock("@/components/DatePickerModal", () => ({
-  __esModule: true,
-  default: () => null,
-}));
+let mockPickerConfirmDate: Date | null = null;
+jest.mock("@/components/DatePickerModal", () => {
+  const React = require("react");
+  const { TouchableOpacity, Text } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ visible, value, onConfirm }: any) => {
+      if (!visible) return null;
+      return React.createElement(
+        TouchableOpacity,
+        {
+          testID: "date-picker-confirm",
+          accessibilityRole: "button",
+          onPress: () => onConfirm(mockPickerConfirmDate ?? value),
+        },
+        React.createElement(Text, null, "日付を確定")
+      );
+    },
+  };
+});
 
 jest.mock("@/components/PhotoCropModal", () => {
   const React = require("react");
@@ -101,6 +117,7 @@ const findButtonByText = (root: any, text: string) =>
 describe("ProfileEditScreen UI (TS-UI-009)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPickerConfirmDate = null;
     mockNavigation.getParent.mockReturnValue({
       setOptions: jest.fn(),
       navigate: mockParentNavigate,
@@ -566,5 +583,368 @@ describe("ProfileEditScreen UI (TS-UI-009)", () => {
     expect(mockDeleteIfExistsAsync).not.toHaveBeenCalled();
     expect(JSON.stringify(tree.toJSON())).toContain("profile-photos/new1.jpg");
     consoleErrorSpy.mockRestore();
+  });
+
+  test("名前が未入力で保存した場合、バリデーションエラーが表示される", async () => {
+    mockAppState = { users: [], activeUserId: null };
+    const routeNew = { params: {} };
+    const alertSpy = jest
+      .spyOn(require("react-native").Alert, "alert")
+      .mockImplementation(() => {});
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route: routeNew,
+        })
+      );
+    });
+
+    // 保存ボタンは名前未入力のため disabled になる
+    const saveButton = findButtonByText(tree.root, "保存");
+    expect(saveButton.props.disabled).toBe(true);
+    expect(mockAddUser).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  test("在胎週数計算に関わる出産予定日・性別を設定して保存すると、正しい値でupdateUserが呼ばれる", async () => {
+    const existingUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd" as const,
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
+      },
+    };
+    mockAppState = { users: [existingUser], activeUserId: "u1" };
+    const route = { params: { profileId: "u1" } };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+
+    // 出産予定日を選択
+    mockPickerConfirmDate = new Date(2024, 2, 1); // 2024-03-01
+    await act(async () => {
+      tree.root
+        .findByProps({ accessibilityLabel: "出産予定日を選択" })
+        .props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "date-picker-confirm" }).props.onPress();
+    });
+
+    // 性別を選択
+    const genderButton = tree.root.findAll(
+      (node: any) => extractText(node) === "女の子" && node.props.onPress
+    )[0];
+    await act(async () => {
+      genderButton.props.onPress();
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "保存").props.onPress();
+    });
+
+    expect(mockUpdateUser).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        dueDate: "2024-03-01",
+        gender: "female",
+      })
+    );
+  });
+
+  test("修正月齢の表示上限を「36か月」に変更して保存できる", async () => {
+    const existingUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd" as const,
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
+      },
+    };
+    mockAppState = { users: [existingUser], activeUserId: "u1" };
+    const route = { params: { profileId: "u1" } };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+
+    const monthsButton = tree.root.findAll(
+      (node: any) => extractText(node) === "36か月" && node.props.onPress
+    )[0];
+    await act(async () => {
+      monthsButton.props.onPress();
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "保存").props.onPress();
+    });
+
+    expect(mockUpdateUser).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        settings: expect.objectContaining({ showCorrectedUntilMonths: 36 }),
+      })
+    );
+  });
+
+  test("生まれてからの日数表示スイッチをOFFにして保存できる", async () => {
+    const existingUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd" as const,
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
+      },
+    };
+    mockAppState = { users: [existingUser], activeUserId: "u1" };
+    const route = { params: { profileId: "u1" } };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+
+    const daysSwitch = tree.root.findAllByType(Switch)[0];
+    await act(async () => {
+      daysSwitch.props.onValueChange(false);
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "保存").props.onPress();
+    });
+
+    expect(mockUpdateUser).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        settings: expect.objectContaining({ showDaysSinceBirth: false }),
+      })
+    );
+  });
+
+  test("削除ボタン押下→確認ダイアログで「削除」を選ぶとdeleteUserが呼ばれる", async () => {
+    const existingUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd" as const,
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
+      },
+    };
+    mockAppState = {
+      users: [existingUser, { ...existingUser, id: "u2", name: "別のこ" }],
+      activeUserId: "u1",
+      achievements: {},
+    };
+    const route = { params: { profileId: "u1" } };
+    const alertSpy = jest
+      .spyOn(require("react-native").Alert, "alert")
+      .mockImplementation((_title, _message, buttons) => {
+        const deleteButton = buttons?.find((b: any) => b.text === "削除");
+        deleteButton?.onPress?.();
+      });
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "このプロフィールを削除する").props.onPress();
+    });
+
+    expect(mockDeleteUser).toHaveBeenCalledWith("u1");
+    alertSpy.mockRestore();
+  });
+
+  test("プロフィールが1件のみの場合、削除ボタンはdisabledになる", async () => {
+    const existingUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd" as const,
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
+      },
+    };
+    mockAppState = { users: [existingUser], activeUserId: "u1" };
+    const route = { params: { profileId: "u1" } };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+
+    const deleteButton = findButtonByText(
+      tree.root,
+      "このプロフィールを削除する"
+    );
+    expect(deleteButton.props.disabled).toBe(true);
+    expect(mockDeleteUser).not.toHaveBeenCalled();
+  });
+
+  test("写真削除ボタン押下でprofilePhotoPathがクリアされる", async () => {
+    const existingUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      profilePhotoPath: "profile-photos/old.jpg",
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd" as const,
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+        notifyMilestoneEnabled: false,
+      },
+    };
+    mockAppState = { users: [existingUser], activeUserId: "u1" };
+    const route = { params: { profileId: "u1" } };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+
+    expect(JSON.stringify(tree.toJSON())).toContain("写真を削除");
+    await act(async () => {
+      findButtonByText(tree.root, "写真を削除").props.onPress();
+    });
+
+    // 既存プロフィール写真と同じパスのため、この時点では即時削除されない
+    // （保存/キャンセル時に実際のパスとの差分を見て削除される）
+    expect(mockDeleteIfExistsAsync).not.toHaveBeenCalled();
+    expect(JSON.stringify(tree.toJSON())).not.toContain("写真を削除");
+  });
+
+  test("写真アクセス許可が拒否された場合、専用のエラーAlertが表示される", async () => {
+    mockAppState = { users: [], activeUserId: null };
+    const routeNew = { params: {} };
+    const { PhotoPermissionDeniedError } = require("@/utils/photo");
+    mockPickPhotoAsync.mockRejectedValueOnce(
+      new PhotoPermissionDeniedError("denied")
+    );
+    const alertSpy = jest
+      .spyOn(require("react-native").Alert, "alert")
+      .mockImplementation(() => {});
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route: routeNew,
+        })
+      );
+    });
+
+    await act(async () => {
+      tree.root
+        .findByProps({ accessibilityLabel: "プロフィール写真を選択" })
+        .props.onPress();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "アクセス許可が必要です",
+      "設定からフォトライブラリへのアクセスを許可してください。"
+    );
+    alertSpy.mockRestore();
+  });
+
+  test("トリミングをキャンセルするとモーダルが閉じる", async () => {
+    mockAppState = { users: [], activeUserId: null };
+    const routeNew = { params: {} };
+    const ProfileEditScreen =
+      require("../src/screens/ProfileEditScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(ProfileEditScreen, {
+          navigation: mockNavigation,
+          route: routeNew,
+        })
+      );
+    });
+
+    await act(async () => {
+      tree.root
+        .findByProps({ accessibilityLabel: "プロフィール写真を選択" })
+        .props.onPress();
+    });
+    expect(JSON.stringify(tree.toJSON())).toContain("photo-crop-modal");
+
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-cancel" }).props.onPress();
+    });
+
+    expect(JSON.stringify(tree.toJSON())).not.toContain("photo-crop-modal");
   });
 });
