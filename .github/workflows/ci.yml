@@ -30,6 +30,7 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npm run test:unit -- --coverage --maxWorkers=2
+      - run: npm test
 
   expo-doctor:
     name: Expo Doctor
