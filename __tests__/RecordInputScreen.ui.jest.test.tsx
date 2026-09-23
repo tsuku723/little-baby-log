@@ -1,12 +1,49 @@
 import React from "react";
 import renderer, { act } from "react-test-renderer";
+import { Alert } from "react-native";
 
 let mockActiveUser: any = null;
 let mockStore: any = {};
+const mockUpsert = jest.fn().mockResolvedValue(undefined);
+const mockRemove = jest.fn().mockResolvedValue(undefined);
 
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
 }));
+
+// SectionList(VirtualizedList) はレイアウト計測に依存し、テスト環境では
+// renderItem が実際に呼ばれないため、候補選択の検証ができるよう同期描画に差し替える
+jest.mock("react-native/Libraries/Lists/SectionList", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({
+      sections,
+      renderItem,
+      renderSectionHeader,
+      keyExtractor,
+    }: any) =>
+      React.createElement(
+        View,
+        null,
+        sections.map((section: any) =>
+          React.createElement(
+            View,
+            { key: section.name },
+            renderSectionHeader ? renderSectionHeader({ section }) : null,
+            section.data.map((item: any) =>
+              React.createElement(
+                React.Fragment,
+                { key: keyExtractor ? keyExtractor(item) : item },
+                renderItem({ item, section })
+              )
+            )
+          )
+        )
+      ),
+  };
+});
 
 jest.mock("@/components/AppText", () => {
   const React = require("react");
@@ -18,10 +55,36 @@ jest.mock("@/components/AppText", () => {
   };
 });
 
-jest.mock("@/components/DatePickerModal", () => ({
-  __esModule: true,
-  default: () => null,
-}));
+jest.mock("@/components/DatePickerModal", () => {
+  const React = require("react");
+  const { View, TouchableOpacity, Text } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ onConfirm, onCancel }: any) =>
+      React.createElement(
+        View,
+        { testID: "date-picker-modal" },
+        React.createElement(
+          TouchableOpacity,
+          {
+            testID: "date-confirm",
+            accessibilityRole: "button",
+            onPress: () => onConfirm(new Date("2024-07-15")),
+          },
+          React.createElement(Text, null, "date-confirm")
+        ),
+        React.createElement(
+          TouchableOpacity,
+          {
+            testID: "date-cancel",
+            accessibilityRole: "button",
+            onPress: onCancel,
+          },
+          React.createElement(Text, null, "date-cancel")
+        )
+      ),
+  };
+});
 
 jest.mock("@/components/PhotoCropModal", () => {
   const React = require("react");
@@ -61,8 +124,8 @@ jest.mock("@/state/AppStateContext", () => ({
 jest.mock("@/state/AchievementsContext", () => ({
   useAchievements: () => ({
     store: mockStore,
-    upsert: jest.fn().mockResolvedValue(undefined),
-    remove: jest.fn().mockResolvedValue(undefined),
+    upsert: mockUpsert,
+    remove: mockRemove,
   }),
 }));
 
@@ -92,6 +155,9 @@ const mockNavigation = {
 };
 const mockRoute = { params: {} };
 
+// CI環境ではモジュール初回requireのオーバーヘッドで既定の5000msを超えることがあるため延長
+jest.setTimeout(20000);
+
 describe("RecordInputScreen UI (TS-UI-005)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -103,7 +169,22 @@ describe("RecordInputScreen UI (TS-UI-005)", () => {
     });
     mockSaveCroppedPhotoAsync.mockResolvedValue("achievement-photos/new.jpg");
     mockDeleteIfExistsAsync.mockResolvedValue(undefined);
+    mockUpsert.mockResolvedValue(undefined);
+    mockRemove.mockResolvedValue(undefined);
   });
+
+  const activeUser = {
+    id: "u1",
+    name: "テストちゃん",
+    birthDate: "2024-01-01",
+    dueDate: null,
+    settings: {
+      showCorrectedUntilMonths: 24,
+      ageFormat: "ymd" as const,
+      showDaysSinceBirth: true,
+      lastViewedMonth: null,
+    },
+  };
 
   const findButtonByText = (root: any, text: string) => {
     const extractText = (node: any): string =>
@@ -421,5 +502,115 @@ describe("RecordInputScreen UI (TS-UI-005)", () => {
       "achievement-photos/new1.jpg"
     );
     consoleErrorSpy.mockRestore();
+  });
+
+  test("タイトル未入力のまま保存すると、保存はブロックされエラーが表示される", async () => {
+    mockActiveUser = activeUser;
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "保存").props.onPress();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "タイトルを入力してください",
+      "記録タイトルは必須です。"
+    );
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  test("タイトル候補シートから候補を選択すると、タイトル欄に反映される", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "候補から選ぶ（任意）").props.onPress();
+    });
+    await act(async () => {
+      findButtonByText(tree.root, "首がすわった").props.onPress();
+    });
+
+    const titleInput = tree.root.findByProps({
+      accessibilityLabel: "タイトル（必須）",
+    });
+    expect(titleInput.props.value).toBe("首がすわった");
+  });
+
+  test("日付ピッカーで選択した日付が画面に反映される", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      tree.root.findByProps({ testID: "date-confirm" }).props.onPress();
+    });
+
+    expect(JSON.stringify(tree.toJSON())).toContain("2024-07-15");
+  });
+
+  test("正常入力時に保存処理が実行され、一覧へ戻る", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    const titleInput = tree.root.findByProps({
+      accessibilityLabel: "タイトル（必須）",
+    });
+    await act(async () => {
+      titleInput.props.onChangeText("初めて笑った日");
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "保存").props.onPress();
+    });
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "初めて笑った日",
+        date: "2024-06-01",
+      })
+    );
+    expect(mockNavigation.goBack).toHaveBeenCalled();
   });
 });
