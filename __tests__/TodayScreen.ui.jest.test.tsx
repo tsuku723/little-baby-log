@@ -1,5 +1,6 @@
 import React from "react";
 import renderer, { act } from "react-test-renderer";
+import { Text as RNText } from "react-native";
 
 let mockActiveUser: any = null;
 let mockByDay: any = {};
@@ -19,8 +20,10 @@ jest.mock("react-native-view-shot", () => {
   return { __esModule: true, default: ViewShot };
 });
 
+const mockRootNavigate = jest.fn();
+
 jest.mock("@react-navigation/native", () => ({
-  useNavigation: () => ({ navigate: jest.fn() }),
+  useNavigation: () => ({ navigate: mockRootNavigate }),
   useFocusEffect: jest.fn(),
 }));
 
@@ -87,6 +90,7 @@ describe("TodayScreen UI (TS-UI-004)", () => {
     mockByDay = {};
     mockAchievementsLoading = false;
     mockStackNavigation.getParent.mockReturnValue({ setOptions: jest.fn() });
+    mockRootNavigate.mockClear();
   });
 
   test("user=null: プロフィールを作成してくださいを表示", async () => {
@@ -262,6 +266,91 @@ describe("TodayScreen UI (TS-UI-004)", () => {
     });
     const json = JSON.stringify(tree.toJSON());
     expect(json).toContain("avatar:テストちゃん");
+  });
+
+  test("RecordCardタップでRecordDetailへ遷移する", async () => {
+    mockActiveUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd",
+        showDaysSinceBirth: false,
+        lastViewedMonth: null,
+      },
+    };
+    mockByDay = {
+      "2024-06-01": [
+        {
+          id: "r1",
+          date: "2024-06-01",
+          title: "初めての笑顔",
+          memo: "",
+          createdAt: "2024-06-01T00:00:00.000Z",
+          updatedAt: "2024-06-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const TodayScreen = require("../src/screens/TodayScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(TodayScreen, {
+          navigation: mockStackNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const buttons = tree.root.findAllByProps({ accessibilityRole: "button" });
+    const recordCard = buttons.find((b: any) =>
+      b
+        .findAllByType(RNText)
+        .some((t: any) => t.props.children === "初めての笑顔")
+    );
+    act(() => {
+      recordCard.props.onPress();
+    });
+    expect(mockRootNavigate).toHaveBeenCalledWith("RecordDetail", {
+      recordId: "r1",
+      from: "today",
+    });
+  });
+
+  test("FABタップでRecordInputへ遷移する", async () => {
+    mockActiveUser = {
+      id: "u1",
+      name: "テストちゃん",
+      birthDate: "2024-01-01",
+      dueDate: null,
+      settings: {
+        showCorrectedUntilMonths: 24,
+        ageFormat: "ymd",
+        showDaysSinceBirth: true,
+        lastViewedMonth: null,
+      },
+    };
+    const TodayScreen = require("../src/screens/TodayScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(TodayScreen, {
+          navigation: mockStackNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+    const buttons = tree.root.findAllByProps({ accessibilityRole: "button" });
+    const fabButton = buttons.find((b: any) =>
+      b.findAllByType(RNText).some((t: any) => t.props.children === "＋記録")
+    );
+    act(() => {
+      fabButton.props.onPress();
+    });
+    expect(mockRootNavigate).toHaveBeenCalledWith("RecordInput", {
+      isoDate: "2024-06-01",
+    });
   });
 
   test("ローディング中: 読み込み中...を表示", async () => {

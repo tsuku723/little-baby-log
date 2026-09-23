@@ -24,6 +24,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import {
   deleteIfExistsAsync,
   ensureFileExistsAsync,
+  generateCropPreviewAsync,
   pickPhotoAsync,
   saveCroppedPhotoAsync,
   saveCroppedProfilePhotoAsync,
@@ -329,5 +330,54 @@ describe("photo utils", () => {
 
     await deleteIfExistsAsync(SAFE_PATH);
     expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+  });
+
+  test("generateCropPreviewAsync returns original uri when within MAX_LONG_EDGE (no resize)", async () => {
+    const result = await generateCropPreviewAsync(
+      "file:///photo.jpg",
+      800,
+      600
+    );
+
+    expect(result).toBe("file:///photo.jpg");
+    expect(ImageManipulator.manipulateAsync).not.toHaveBeenCalled();
+  });
+
+  test("generateCropPreviewAsync resizes width when longer edge exceeds MAX_LONG_EDGE (landscape)", async () => {
+    (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
+      uri: "file:///resized-landscape.jpg",
+    });
+
+    const result = await generateCropPreviewAsync(
+      "file:///photo.jpg",
+      3200,
+      1600
+    );
+
+    expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(
+      "file:///photo.jpg",
+      [{ resize: { width: 1600 } }],
+      { compress: 1, format: "jpeg" }
+    );
+    expect(result).toBe("file:///resized-landscape.jpg");
+  });
+
+  test("generateCropPreviewAsync resizes height when longer edge exceeds MAX_LONG_EDGE (portrait)", async () => {
+    (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
+      uri: "file:///resized-portrait.jpg",
+    });
+
+    const result = await generateCropPreviewAsync(
+      "file:///photo.jpg",
+      1600,
+      3200
+    );
+
+    expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(
+      "file:///photo.jpg",
+      [{ resize: { height: 1600 } }],
+      { compress: 1, format: "jpeg" }
+    );
+    expect(result).toBe("file:///resized-portrait.jpg");
   });
 });

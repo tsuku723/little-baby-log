@@ -5,8 +5,9 @@ let mockActiveUser: any = null;
 let mockStore: any = {};
 let mockLoading = false;
 
+const mockRootNavigate = jest.fn();
 jest.mock("@react-navigation/native", () => ({
-  useNavigation: () => ({ navigate: jest.fn() }),
+  useNavigation: () => ({ navigate: mockRootNavigate }),
 }));
 
 jest.mock("@expo/vector-icons", () => ({
@@ -29,15 +30,27 @@ jest.mock("@/components/DatePickerModal", () => {
   const { TouchableOpacity, Text } = require("react-native");
   return {
     __esModule: true,
-    default: ({ visible, value, onConfirm }: any) => {
+    default: ({ visible, value, onConfirm, onCancel }: any) => {
       if (!visible) return null;
       return React.createElement(
-        TouchableOpacity,
-        {
-          accessibilityLabel: "日付を確定",
-          onPress: () => onConfirm(mockPickerConfirmDate ?? value),
-        },
-        React.createElement(Text, null, "確定")
+        React.Fragment,
+        null,
+        React.createElement(
+          TouchableOpacity,
+          {
+            accessibilityLabel: "日付を確定",
+            onPress: () => onConfirm(mockPickerConfirmDate ?? value),
+          },
+          React.createElement(Text, null, "確定")
+        ),
+        React.createElement(
+          TouchableOpacity,
+          {
+            accessibilityLabel: "日付選択をキャンセル",
+            onPress: onCancel,
+          },
+          React.createElement(Text, null, "キャンセル")
+        )
       );
     },
   };
@@ -122,6 +135,39 @@ describe("AchievementListScreen UI (TS-UI-007)", () => {
   test("FABボタン（＋記録）が描画される", () => {
     const { queryByText } = renderScreen();
     expect(queryByText("＋記録")).not.toBeNull();
+  });
+
+  test("FABタップでRecordInputへ本日の日付付きで遷移する", () => {
+    const { getByText } = renderScreen();
+    fireEvent.press(getByText("＋記録"));
+    expect(mockRootNavigate).toHaveBeenCalledWith(
+      "RecordInput",
+      expect.objectContaining({ isoDate: expect.any(String) })
+    );
+  });
+
+  test("日付ピッカーのキャンセルで選択中の日付は変更されない", () => {
+    mockStore = {
+      "2024-06-15": [
+        {
+          id: "r1",
+          date: "2024-06-15",
+          title: "対象レコード",
+          memo: "",
+          createdAt: "2024-06-15T00:00:00.000Z",
+          updatedAt: "2024-06-15T00:00:00.000Z",
+        },
+      ],
+    };
+    const { getByLabelText, queryByLabelText, queryByText } = renderScreen();
+    fireEvent.press(getByLabelText("絞り込みを切り替える"));
+    fireEvent.press(getByLabelText("開始日を選択"));
+    fireEvent.press(getByLabelText("日付選択をキャンセル"));
+
+    expect(
+      queryByLabelText("絞り込みを切り替える（期間で絞り込み中）")
+    ).toBeNull();
+    expect(queryByText("対象レコード")).not.toBeNull();
   });
 
   test("フリーワード検索: タイトルが一致するレコードのみ表示される", () => {
