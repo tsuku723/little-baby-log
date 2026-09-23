@@ -99,7 +99,7 @@ const toPolylinePoints = (points: XY[]): string =>
   points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 
 // 目盛り間隔は値域を4〜6分割程度になる「きりの良い数」に丸める
-const niceStep = (range: number): number => {
+export const niceStep = (range: number): number => {
   if (range <= 0) return 1;
   const rough = range / 5;
   const magnitude = 10 ** Math.floor(Math.log10(rough));
