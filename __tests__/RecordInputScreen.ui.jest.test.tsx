@@ -1,6 +1,6 @@
 import React from "react";
 import renderer, { act } from "react-test-renderer";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 
 let mockActiveUser: any = null;
 let mockStore: any = {};
@@ -139,19 +139,31 @@ jest.mock("@/state/DateViewContext", () => {
 
 const mockPickPhotoAsync = jest.fn().mockResolvedValue(null);
 const mockSaveCroppedPhotoAsync = jest.fn().mockResolvedValue(null);
+const mockSaveDirectPhotoAsync = jest.fn().mockResolvedValue(null);
 const mockDeleteIfExistsAsync = jest.fn().mockResolvedValue(undefined);
+const mockEnsureFileExistsAsync = jest.fn().mockResolvedValue(null);
+
+class MockPhotoPermissionDeniedError extends Error {
+  constructor() {
+    super("Photo permission denied");
+    this.name = "PhotoPermissionDeniedError";
+  }
+}
 
 jest.mock("@/utils/photo", () => ({
-  ensureFileExistsAsync: jest.fn().mockResolvedValue(null),
+  ensureFileExistsAsync: mockEnsureFileExistsAsync,
   pickPhotoAsync: mockPickPhotoAsync,
   saveCroppedPhotoAsync: mockSaveCroppedPhotoAsync,
+  saveDirectPhotoAsync: mockSaveDirectPhotoAsync,
   deleteIfExistsAsync: mockDeleteIfExistsAsync,
   resolvePhotoPath: (path: string) => path,
+  PhotoPermissionDeniedError: MockPhotoPermissionDeniedError,
 }));
 
 const mockNavigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  replace: jest.fn(),
 };
 const mockRoute = { params: {} };
 
@@ -169,7 +181,9 @@ describe("RecordInputScreen UI (TS-UI-005)", () => {
       height: 100,
     });
     mockSaveCroppedPhotoAsync.mockResolvedValue("achievement-photos/new.jpg");
+    mockSaveDirectPhotoAsync.mockResolvedValue("achievement-photos/direct.jpg");
     mockDeleteIfExistsAsync.mockResolvedValue(undefined);
+    mockEnsureFileExistsAsync.mockResolvedValue(null);
     mockUpsert.mockResolvedValue(undefined);
     mockRemove.mockResolvedValue(undefined);
   });
@@ -613,5 +627,564 @@ describe("RecordInputScreen UI (TS-UI-005)", () => {
       })
     );
     expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test("保存に失敗した場合、エラーAlertが表示され画面遷移しない", async () => {
+    mockActiveUser = activeUser;
+    mockUpsert.mockRejectedValueOnce(new Error("save failed"));
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    const titleInput = tree.root.findByProps({
+      accessibilityLabel: "タイトル（必須）",
+    });
+    await act(async () => {
+      titleInput.props.onChangeText("初めて笑った日");
+    });
+    await act(async () => {
+      findButtonByText(tree.root, "保存").props.onPress();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "保存に失敗しました",
+      "時間をおいて再度お試しください。"
+    );
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("新規記録で写真を追加したまま保存すると、photoPathがペイロードに含まれる", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を追加").props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+
+    const titleInput = tree.root.findByProps({
+      accessibilityLabel: "タイトル（必須）",
+    });
+    await act(async () => {
+      titleInput.props.onChangeText("写真つきの記録");
+    });
+    await act(async () => {
+      findButtonByText(tree.root, "保存").props.onPress();
+    });
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ photoPath: "achievement-photos/new.jpg" })
+    );
+  });
+
+  test("写真権限が拒否された場合、設定を開く導線を含むAlertが表示される", async () => {
+    mockActiveUser = activeUser;
+    mockPickPhotoAsync.mockRejectedValueOnce(
+      new MockPhotoPermissionDeniedError()
+    );
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const openSettingsSpy = jest
+      .spyOn(Linking, "openSettings")
+      .mockImplementation(() => Promise.resolve());
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を追加").props.onPress();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "写真へのアクセスが許可されていません",
+      "写真を追加するには、設定アプリでこのアプリの写真アクセスを許可してください。",
+      expect.arrayContaining([expect.objectContaining({ text: "設定を開く" })])
+    );
+
+    const [, , buttons] = alertSpy.mock.calls[0];
+    const openSettingsButton = (buttons as any[]).find(
+      (b) => b.text === "設定を開く"
+    );
+    openSettingsButton.onPress();
+    expect(openSettingsSpy).toHaveBeenCalled();
+
+    alertSpy.mockRestore();
+    openSettingsSpy.mockRestore();
+  });
+
+  test("写真選択で予期しないエラーが発生した場合、汎用エラーAlertが表示される", async () => {
+    mockActiveUser = activeUser;
+    mockPickPhotoAsync.mockRejectedValueOnce(new Error("unexpected"));
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を追加").props.onPress();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "写真の追加に失敗しました",
+      "再度お試しください。"
+    );
+    alertSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  test("寸法が取得できない画像はトリミングをスキップして直接保存される", async () => {
+    mockActiveUser = activeUser;
+    mockPickPhotoAsync.mockResolvedValueOnce({
+      uri: "file://picked-nodim.jpg",
+      width: null,
+      height: null,
+    });
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を追加").props.onPress();
+    });
+
+    expect(mockSaveDirectPhotoAsync).toHaveBeenCalledWith(
+      "file://picked-nodim.jpg"
+    );
+    expect(mockSaveCroppedPhotoAsync).not.toHaveBeenCalled();
+    // トリミングモーダルは表示されない
+    expect(JSON.stringify(tree.toJSON())).not.toContain("photo-crop-modal");
+    expect(JSON.stringify(tree.toJSON())).toContain(
+      "achievement-photos/direct.jpg"
+    );
+  });
+
+  test("写真を外すと未保存の一時写真が破棄され、プレビューが消える", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を追加").props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+    expect(JSON.stringify(tree.toJSON())).toContain(
+      "achievement-photos/new.jpg"
+    );
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を外す").props.onPress();
+    });
+
+    expect(mockDeleteIfExistsAsync).toHaveBeenCalledWith(
+      "achievement-photos/new.jpg"
+    );
+    expect(JSON.stringify(tree.toJSON())).not.toContain("写真を外す");
+  });
+
+  test("写真を外す際に削除が失敗しても警告ログのみで状態はクリアされる", async () => {
+    mockActiveUser = activeUser;
+    mockDeleteIfExistsAsync.mockRejectedValueOnce(new Error("delete failed"));
+    const consoleWarnSpy = jest
+      .spyOn(console, "warn")
+      .mockImplementation(() => {});
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を追加").props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-confirm" }).props.onPress();
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を外す").props.onPress();
+    });
+
+    expect(consoleWarnSpy).toHaveBeenCalled();
+    expect(JSON.stringify(tree.toJSON())).not.toContain("写真を外す");
+    consoleWarnSpy.mockRestore();
+  });
+
+  test("編集モードで既存写真を外して保存すると、photoPathがnullになる", async () => {
+    mockActiveUser = activeUser;
+    mockStore = {
+      "2024-06-01": [
+        {
+          id: "r1",
+          date: "2024-06-01",
+          title: "テスト記録",
+          memo: "",
+          photoPath: "achievement-photos/existing.jpg",
+          createdAt: "2024-06-01T00:00:00.000Z",
+          updatedAt: "2024-06-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const editRoute = {
+      params: { recordId: "r1", isoDate: "2024-06-01", from: "today" },
+    };
+    // 編集対象の写真が実ファイルとして存在する前提にする
+    mockEnsureFileExistsAsync.mockResolvedValue(
+      "achievement-photos/existing.jpg"
+    );
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: editRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を外す").props.onPress();
+    });
+    await act(async () => {
+      findButtonByText(tree.root, "保存").props.onPress();
+    });
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ photoPath: null })
+    );
+  });
+
+  test("ヘッダーのキャンセルボタンでgoBackが呼ばれる", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "キャンセル").props.onPress();
+    });
+
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test("日付ピッカーをキャンセルすると日付は変わらない", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      tree.root.findByProps({ testID: "date-cancel" }).props.onPress();
+    });
+
+    expect(JSON.stringify(tree.toJSON())).toContain("2024-06-01");
+  });
+
+  test("トリミングをキャンセルすると写真は追加されない", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "写真を追加").props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ testID: "crop-cancel" }).props.onPress();
+    });
+
+    expect(mockSaveCroppedPhotoAsync).not.toHaveBeenCalled();
+    expect(JSON.stringify(tree.toJSON())).not.toContain("photo-crop-modal");
+  });
+
+  test("メモを入力すると残り文字数が更新される", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    const memoInput = tree.root.findByProps({ accessibilityLabel: "メモ" });
+    await act(async () => {
+      memoInput.props.onChangeText("とても嬉しかった");
+    });
+
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain("残り ");
+    expect(json).toContain('"492"');
+  });
+
+  test("今日へボタンを押すと日付が今日になる", async () => {
+    mockActiveUser = activeUser;
+    const RecordInputScreen =
+      require("../src/screens/RecordInputScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordInputScreen, {
+          navigation: mockNavigation,
+          route: mockRoute,
+        })
+      );
+    });
+
+    await act(async () => {
+      findButtonByText(tree.root, "今日へ").props.onPress();
+    });
+
+    const { toIsoDateString } = require("@/utils/dateUtils");
+    expect(JSON.stringify(tree.toJSON())).toContain(
+      toIsoDateString(new Date())
+    );
+  });
+
+  describe("confirmDelete", () => {
+    const editRoute = (from: string) => ({
+      params: { recordId: "r1", isoDate: "2024-06-01", from },
+    });
+
+    beforeEach(() => {
+      mockStore = {
+        "2024-06-01": [
+          {
+            id: "r1",
+            date: "2024-06-01",
+            title: "テスト記録",
+            memo: "",
+            createdAt: "2024-06-01T00:00:00.000Z",
+            updatedAt: "2024-06-01T00:00:00.000Z",
+          },
+        ],
+      };
+    });
+
+    test("キャンセルを選択すると削除されない", async () => {
+      mockActiveUser = activeUser;
+      const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const RecordInputScreen =
+        require("../src/screens/RecordInputScreen").default;
+      let tree: any;
+      await act(async () => {
+        tree = renderer.create(
+          React.createElement(RecordInputScreen, {
+            navigation: mockNavigation,
+            route: editRoute("today"),
+          })
+        );
+      });
+
+      await act(async () => {
+        findButtonByText(tree.root, "この記録を削除").props.onPress();
+      });
+
+      // Alert.alert のボタンを何も押さない = キャンセル相当
+      expect(mockRemove).not.toHaveBeenCalled();
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+      alertSpy.mockRestore();
+    });
+
+    test("from=list のとき、削除実行でRecordListStackへ遷移しremoveが呼ばれる", async () => {
+      mockActiveUser = activeUser;
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation((_title, _msg, buttons) => {
+          const deleteButton = (buttons as any[])?.find(
+            (b) => b.text === "削除"
+          );
+          deleteButton?.onPress?.();
+        });
+      const RecordInputScreen =
+        require("../src/screens/RecordInputScreen").default;
+      let tree: any;
+      await act(async () => {
+        tree = renderer.create(
+          React.createElement(RecordInputScreen, {
+            navigation: mockNavigation,
+            route: editRoute("list"),
+          })
+        );
+      });
+
+      await act(async () => {
+        findButtonByText(tree.root, "この記録を削除").props.onPress();
+      });
+
+      expect(mockNavigation.replace).toHaveBeenCalledWith("MainTabs", {
+        screen: "RecordListStack",
+      });
+      expect(mockRemove).toHaveBeenCalledWith("r1", "2024-06-01");
+      alertSpy.mockRestore();
+    });
+
+    test("from=list以外のとき、削除実行でCalendarStackへ遷移する", async () => {
+      mockActiveUser = activeUser;
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation((_title, _msg, buttons) => {
+          const deleteButton = (buttons as any[])?.find(
+            (b) => b.text === "削除"
+          );
+          deleteButton?.onPress?.();
+        });
+      const RecordInputScreen =
+        require("../src/screens/RecordInputScreen").default;
+      let tree: any;
+      await act(async () => {
+        tree = renderer.create(
+          React.createElement(RecordInputScreen, {
+            navigation: mockNavigation,
+            route: editRoute("today"),
+          })
+        );
+      });
+
+      await act(async () => {
+        findButtonByText(tree.root, "この記録を削除").props.onPress();
+      });
+
+      expect(mockNavigation.replace).toHaveBeenCalledWith("MainTabs", {
+        screen: "CalendarStack",
+      });
+      alertSpy.mockRestore();
+    });
+
+    test("削除に失敗した場合、エラーAlertが表示される", async () => {
+      mockActiveUser = activeUser;
+      mockRemove.mockRejectedValueOnce(new Error("delete failed"));
+      const consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const alertSpy = jest
+        .spyOn(Alert, "alert")
+        .mockImplementation((_title, _msg, buttons) => {
+          const deleteButton = (buttons as any[])?.find(
+            (b) => b.text === "削除"
+          );
+          deleteButton?.onPress?.();
+        });
+      const RecordInputScreen =
+        require("../src/screens/RecordInputScreen").default;
+      let tree: any;
+      await act(async () => {
+        tree = renderer.create(
+          React.createElement(RecordInputScreen, {
+            navigation: mockNavigation,
+            route: editRoute("today"),
+          })
+        );
+      });
+
+      await act(async () => {
+        findButtonByText(tree.root, "この記録を削除").props.onPress();
+      });
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        "削除に失敗しました",
+        "時間をおいて再度お試しください。"
+      );
+      alertSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
   });
 });
