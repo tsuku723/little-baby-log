@@ -281,6 +281,7 @@ const PhotoCropModal: React.FC<Props> = ({
           </TouchableOpacity>
         </View>
         <View
+          testID="photo-crop-area"
           style={styles.cropArea}
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
@@ -340,6 +341,7 @@ const PhotoCropModal: React.FC<Props> = ({
                 ]}
               />
               <View
+                testID="photo-crop-frame"
                 pointerEvents="none"
                 style={[
                   styles.frameBorder,
