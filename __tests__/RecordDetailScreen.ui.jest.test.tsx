@@ -137,6 +137,142 @@ describe("RecordDetailScreen UI (TS-UI-006)", () => {
     expect(json).toContain("編集");
   });
 
+  test("record=null かつ from=list: 戻るボタンでgoBackが呼ばれる", async () => {
+    mockStore = {};
+    const route = {
+      params: { recordId: "nonexistent", isoDate: "2024-06-01", from: "list" },
+    };
+    const RecordDetailScreen =
+      require("../src/screens/RecordDetailScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordDetailScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+    const backButton = tree.root.findAll(
+      (node: any) => node.props.accessibilityRole === "button"
+    )[0];
+    await act(async () => {
+      backButton.props.onPress();
+    });
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test("ヘッダーの戻るボタンでgoBackが呼ばれる", async () => {
+    mockStore = {
+      "2024-06-01": [
+        {
+          id: "r1",
+          date: "2024-06-01",
+          title: "初めての寝返り",
+          memo: "",
+          createdAt: "2024-06-01T00:00:00.000Z",
+          updatedAt: "2024-06-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const route = {
+      params: { recordId: "r1", isoDate: "2024-06-01", from: "today" },
+    };
+    const RecordDetailScreen =
+      require("../src/screens/RecordDetailScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordDetailScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+    const backButton = tree.root.findByProps({ accessibilityLabel: "戻る" });
+    await act(async () => {
+      backButton.props.onPress();
+    });
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test("ヘッダーの編集ボタンでRecordInput画面へ遷移する", async () => {
+    mockStore = {
+      "2024-06-01": [
+        {
+          id: "r1",
+          date: "2024-06-01",
+          title: "初めての寝返り",
+          memo: "",
+          createdAt: "2024-06-01T00:00:00.000Z",
+          updatedAt: "2024-06-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const route = {
+      params: { recordId: "r1", isoDate: "2024-06-01", from: "today" },
+    };
+    const RecordDetailScreen =
+      require("../src/screens/RecordDetailScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordDetailScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+    const editButton = tree.root.findByProps({ accessibilityLabel: "編集" });
+    await act(async () => {
+      editButton.props.onPress();
+    });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith("RecordInput", {
+      recordId: "r1",
+      isoDate: "2024-06-01",
+      from: "today",
+    });
+  });
+
+  test("日付タップでToday画面へ遷移する", async () => {
+    mockStore = {
+      "2024-06-01": [
+        {
+          id: "r1",
+          date: "2024-06-01",
+          title: "初めての寝返り",
+          memo: "",
+          createdAt: "2024-06-01T00:00:00.000Z",
+          updatedAt: "2024-06-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const route = {
+      params: { recordId: "r1", isoDate: "2024-06-01", from: "today" },
+    };
+    const RecordDetailScreen =
+      require("../src/screens/RecordDetailScreen").default;
+    let tree: any;
+    await act(async () => {
+      tree = renderer.create(
+        React.createElement(RecordDetailScreen, {
+          navigation: mockNavigation,
+          route,
+        })
+      );
+    });
+    const dateButton = tree.root.findByProps({
+      accessibilityLabel: "その日の記録をエクスポート",
+    });
+    await act(async () => {
+      dateButton.props.onPress();
+    });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith("MainTabs", {
+      screen: "CalendarStack",
+      params: { screen: "Today", params: { isoDate: "2024-06-01" } },
+    });
+  });
+
   test("user.name なし: ヘッダーが「記録」になる", async () => {
     mockActiveUser = null;
     mockStore = {
