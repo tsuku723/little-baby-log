@@ -12,6 +12,7 @@ import {
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import AgeBadge from "@/components/AgeBadge";
 import AppText from "@/components/AppText";
 import GrowthChart, { MEASUREMENT_FIELD } from "@/components/GrowthChart";
 import UserAvatar from "@/components/UserAvatar";
@@ -80,22 +81,6 @@ export const getDefaultRangeKey = (chronologicalMonths: number): RangeKey => {
 
 const dateLabel = (iso: string): string => iso.replace(/-/g, "/");
 
-// 記録日時点の月齢を表示用に整形する。他画面（カレンダー・記録詳細）と同じ表示ルールに合わせる
-const buildAgeLabel = (
-  ageInfo: ReturnType<typeof calculateAgeInfo>
-): string => {
-  if (
-    ageInfo.flags.showMode === "gestational" &&
-    ageInfo.gestational.formatted
-  ) {
-    return `${ageInfo.chronological.formatted} / 在胎${ageInfo.gestational.formatted}`;
-  }
-  if (ageInfo.corrected.visible && ageInfo.corrected.formatted) {
-    return `${ageInfo.chronological.formatted} / 修正${ageInfo.corrected.formatted}`;
-  }
-  return ageInfo.chronological.formatted;
-};
-
 const GrowthScreen: React.FC<Props> = () => {
   const rootNavigation = useNavigation<RootNavigation>();
   const user = useActiveUser();
@@ -143,19 +128,18 @@ const GrowthScreen: React.FC<Props> = () => {
 
   const renderItem = ({ item }: { item: GrowthRecord }) => {
     const value = item[activeTab.field];
-    let ageLabel: string | null = null;
+    let ageInfo: ReturnType<typeof calculateAgeInfo> | null = null;
     if (user?.birthDate) {
       try {
-        const ageInfo = calculateAgeInfo({
+        ageInfo = calculateAgeInfo({
           targetDate: item.date,
           birthDate: user.birthDate,
           dueDate: user.dueDate,
           showCorrectedUntilMonths: user.settings.showCorrectedUntilMonths,
           ageFormat: user.settings.ageFormat,
         });
-        ageLabel = buildAgeLabel(ageInfo);
       } catch {
-        ageLabel = null;
+        ageInfo = null;
       }
     }
     return (
@@ -170,12 +154,34 @@ const GrowthScreen: React.FC<Props> = () => {
           accessibilityRole="button"
         >
           <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
-          {ageLabel ? <Text style={styles.cardDate}>{ageLabel}</Text> : null}
-          <Text style={styles.cardValues}>
-            {activeTab.label}{" "}
-            {typeof value === "number" ? value.toFixed(1) : ""}
-            {activeTab.unit}
-          </Text>
+          {ageInfo ? (
+            <View style={styles.ageBadgeRow}>
+              <AgeBadge
+                label={ageInfo.chronological.formatted}
+                variant="chronological"
+              />
+              {ageInfo.flags.showMode === "gestational" &&
+              ageInfo.gestational.formatted ? (
+                <AgeBadge
+                  label={`在胎 ${ageInfo.gestational.formatted}`}
+                  variant="gestational"
+                />
+              ) : null}
+              {ageInfo.corrected.visible && ageInfo.corrected.formatted ? (
+                <AgeBadge
+                  label={`修正 ${ageInfo.corrected.formatted}`}
+                  variant="corrected"
+                />
+              ) : null}
+            </View>
+          ) : null}
+          <View style={styles.cardValueRow}>
+            <Text style={styles.cardValueLabel}>{activeTab.label}</Text>
+            <Text style={styles.cardValue}>
+              {typeof value === "number" ? value.toFixed(1) : ""}
+              {activeTab.unit}
+            </Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.editButton}
@@ -396,14 +402,29 @@ const styles = StyleSheet.create({
   },
   cardMain: {
     flex: 1,
-    gap: 4,
+    gap: 6,
   },
   cardDate: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  ageBadgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  cardValueRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+  },
+  cardValueLabel: {
     fontSize: 13,
     color: COLORS.textSecondary,
   },
-  cardValues: {
-    fontSize: 15,
+  cardValue: {
+    fontSize: 22,
+    fontWeight: "700",
     color: COLORS.textPrimary,
   },
   editButton: {

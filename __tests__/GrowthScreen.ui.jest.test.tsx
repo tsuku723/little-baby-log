@@ -263,14 +263,18 @@ describe("GrowthScreen UI", () => {
       mockUser = baseUser({ birthDate: "2025-01-01", dueDate: "2025-03-01" });
       mockRecords = [record({ id: "r1", date: "2025-04-01", weightKg: 5 })];
       const tree = await renderScreen();
-      expect(allTexts(tree)).toContain("3ヶ月0日 / 修正1ヶ月0日");
+      const texts = allTexts(tree);
+      expect(texts).toContain("3ヶ月0日");
+      expect(texts).toContain("修正 1ヶ月0日");
     });
 
     test("出産予定日前: 暦月齢と在胎週数が併記される", async () => {
       mockUser = baseUser({ birthDate: "2025-01-01", dueDate: "2025-03-01" });
       mockRecords = [record({ id: "r1", date: "2025-01-15", weightKg: 5 })];
       const tree = await renderScreen();
-      expect(allTexts(tree)).toContain("0ヶ月14日 / 在胎33週4日");
+      const texts = allTexts(tree);
+      expect(texts).toContain("0ヶ月14日");
+      expect(texts).toContain("在胎 33週4日");
     });
 
     test("対象外（正産期で出産予定日設定あり）: 暦月齢のみ表示される", async () => {
