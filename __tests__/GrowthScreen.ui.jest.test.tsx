@@ -56,6 +56,10 @@ const baseUser = (overrides: Partial<any> = {}) => ({
   dueDate: null,
   gender: null,
   profilePhotoPath: undefined,
+  settings: {
+    ageFormat: "md",
+    showCorrectedUntilMonths: null,
+  },
   ...overrides,
 });
 
@@ -245,6 +249,46 @@ describe("GrowthScreen UI", () => {
       "GrowthRecordInput",
       expect.objectContaining({ isoDate: expect.any(String) })
     );
+  });
+
+  describe("一覧カードの月齢表示", () => {
+    test("通常: 暦月齢のみ表示される", async () => {
+      mockUser = baseUser({ birthDate: "2025-01-01", dueDate: null });
+      mockRecords = [record({ id: "r1", date: "2025-06-07", weightKg: 5 })];
+      const tree = await renderScreen();
+      expect(allTexts(tree)).toContain("5ヶ月6日");
+    });
+
+    test("修正対象期間内: 暦月齢と修正月齢が併記される", async () => {
+      mockUser = baseUser({ birthDate: "2025-01-01", dueDate: "2025-03-01" });
+      mockRecords = [record({ id: "r1", date: "2025-04-01", weightKg: 5 })];
+      const tree = await renderScreen();
+      expect(allTexts(tree)).toContain("3ヶ月0日 / 修正1ヶ月0日");
+    });
+
+    test("出産予定日前: 暦月齢と在胎週数が併記される", async () => {
+      mockUser = baseUser({ birthDate: "2025-01-01", dueDate: "2025-03-01" });
+      mockRecords = [record({ id: "r1", date: "2025-01-15", weightKg: 5 })];
+      const tree = await renderScreen();
+      expect(allTexts(tree)).toContain("0ヶ月14日 / 在胎33週4日");
+    });
+
+    test("対象外（正産期で出産予定日設定あり）: 暦月齢のみ表示される", async () => {
+      mockUser = baseUser({ birthDate: "2025-01-01", dueDate: "2025-01-05" });
+      mockRecords = [record({ id: "r1", date: "2025-06-07", weightKg: 5 })];
+      const tree = await renderScreen();
+      const texts = allTexts(tree);
+      expect(texts).toContain("5ヶ月6日");
+      expect(texts.some((t) => t.includes("在胎"))).toBe(false);
+    });
+
+    test("ユーザー・生年月日未設定時: 月齢は表示されない", async () => {
+      mockUser = null;
+      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 5 })];
+      const tree = await renderScreen();
+      const texts = allTexts(tree);
+      expect(texts.some((t) => t.includes("ヶ月"))).toBe(false);
+    });
   });
 
   describe("編集ボタン", () => {

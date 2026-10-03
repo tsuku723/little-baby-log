@@ -25,6 +25,7 @@ import {
 import { GrowthRecord, useActiveUser } from "@/state/AppStateContext";
 import { useGrowthRecords } from "@/state/GrowthRecordsContext";
 import {
+  calculateAgeInfo,
   toDecimalMonths,
   toIsoDateString,
   toUtcDateOnly,
@@ -79,6 +80,22 @@ export const getDefaultRangeKey = (chronologicalMonths: number): RangeKey => {
 
 const dateLabel = (iso: string): string => iso.replace(/-/g, "/");
 
+// 記録日時点の月齢を表示用に整形する。他画面（カレンダー・記録詳細）と同じ表示ルールに合わせる
+const buildAgeLabel = (
+  ageInfo: ReturnType<typeof calculateAgeInfo>
+): string => {
+  if (
+    ageInfo.flags.showMode === "gestational" &&
+    ageInfo.gestational.formatted
+  ) {
+    return `${ageInfo.chronological.formatted} / 在胎${ageInfo.gestational.formatted}`;
+  }
+  if (ageInfo.corrected.visible && ageInfo.corrected.formatted) {
+    return `${ageInfo.chronological.formatted} / 修正${ageInfo.corrected.formatted}`;
+  }
+  return ageInfo.chronological.formatted;
+};
+
 const GrowthScreen: React.FC<Props> = () => {
   const rootNavigation = useNavigation<RootNavigation>();
   const user = useActiveUser();
@@ -126,6 +143,21 @@ const GrowthScreen: React.FC<Props> = () => {
 
   const renderItem = ({ item }: { item: GrowthRecord }) => {
     const value = item[activeTab.field];
+    let ageLabel: string | null = null;
+    if (user?.birthDate) {
+      try {
+        const ageInfo = calculateAgeInfo({
+          targetDate: item.date,
+          birthDate: user.birthDate,
+          dueDate: user.dueDate,
+          showCorrectedUntilMonths: user.settings.showCorrectedUntilMonths,
+          ageFormat: user.settings.ageFormat,
+        });
+        ageLabel = buildAgeLabel(ageInfo);
+      } catch {
+        ageLabel = null;
+      }
+    }
     return (
       <View style={styles.card}>
         <TouchableOpacity
@@ -138,6 +170,7 @@ const GrowthScreen: React.FC<Props> = () => {
           accessibilityRole="button"
         >
           <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
+          {ageLabel ? <Text style={styles.cardDate}>{ageLabel}</Text> : null}
           <Text style={styles.cardValues}>
             {activeTab.label}{" "}
             {typeof value === "number" ? value.toFixed(1) : ""}
