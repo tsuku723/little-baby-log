@@ -152,29 +152,31 @@ const GrowthScreen: React.FC<Props> = () => {
         }
         accessibilityRole="button"
       >
-        <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
-        {ageInfo ? (
-          <View style={styles.ageBadgeRow}>
-            <AgeBadge
-              label={ageInfo.chronological.formatted}
-              variant="chronological"
-            />
-            {ageInfo.flags.showMode === "gestational" &&
-            ageInfo.gestational.visible &&
-            ageInfo.gestational.formatted ? (
+        <View style={styles.cardDateRow}>
+          <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
+          {ageInfo ? (
+            <View style={styles.ageBadgeRow}>
               <AgeBadge
-                label={`在胎 ${ageInfo.gestational.formatted}`}
-                variant="gestational"
+                label={ageInfo.chronological.formatted}
+                variant="chronological"
               />
-            ) : null}
-            {ageInfo.corrected.visible && ageInfo.corrected.formatted ? (
-              <AgeBadge
-                label={`修正 ${ageInfo.corrected.formatted}`}
-                variant="corrected"
-              />
-            ) : null}
-          </View>
-        ) : null}
+              {ageInfo.flags.showMode === "gestational" &&
+              ageInfo.gestational.visible &&
+              ageInfo.gestational.formatted ? (
+                <AgeBadge
+                  label={`在胎 ${ageInfo.gestational.formatted}`}
+                  variant="gestational"
+                />
+              ) : null}
+              {ageInfo.corrected.visible && ageInfo.corrected.formatted ? (
+                <AgeBadge
+                  label={`修正 ${ageInfo.corrected.formatted}`}
+                  variant="corrected"
+                />
+              ) : null}
+            </View>
+          ) : null}
+        </View>
         <View style={styles.cardValueRow}>
           <Text style={styles.cardValueLabel}>{activeTab.label}</Text>
           <Text style={styles.cardValue}>
@@ -383,6 +385,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 12,
+    gap: 6,
+  },
+  cardDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 6,
   },
   cardDate: {
