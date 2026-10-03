@@ -160,6 +160,7 @@ const GrowthScreen: React.FC<Props> = () => {
               variant="chronological"
             />
             {ageInfo.flags.showMode === "gestational" &&
+            ageInfo.gestational.visible &&
             ageInfo.gestational.formatted ? (
               <AgeBadge
                 label={`在胎 ${ageInfo.gestational.formatted}`}
