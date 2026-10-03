@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
-  Platform,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -59,13 +57,6 @@ const MEASUREMENT_TABS: {
   },
 ];
 
-const ALL_NUMERIC_FIELDS: NumericGrowthField[] = [
-  "weightKg",
-  "heightCm",
-  "headCircumferenceCm",
-  "chestCircumferenceCm",
-];
-
 type RangeKey = "y1" | "y2" | "y3" | "y6" | "all";
 
 // 実月齢（出生日起点）で区切る境界。基準線データの終端とは厳密には一致しないが許容する
@@ -91,7 +82,7 @@ const dateLabel = (iso: string): string => iso.replace(/-/g, "/");
 const GrowthScreen: React.FC<Props> = () => {
   const rootNavigation = useNavigation<RootNavigation>();
   const user = useActiveUser();
-  const { loading, records, upsert, remove } = useGrowthRecords();
+  const { loading, records } = useGrowthRecords();
   const [measurementType, setMeasurementType] =
     useState<GrowthMeasurementType>("weight");
   const [rangeKey, setRangeKey] = useState<RangeKey>("all");
@@ -133,65 +124,6 @@ const GrowthScreen: React.FC<Props> = () => {
     [records, activeTab]
   );
 
-  const handleDeleteField = (record: GrowthRecord) => {
-    const remainingFields = ALL_NUMERIC_FIELDS.filter(
-      (field) => field !== activeTab.field && typeof record[field] === "number"
-    );
-    const deleteRecord = async () => {
-      try {
-        if (remainingFields.length === 0) {
-          await remove(record.id);
-          return;
-        }
-        await upsert({
-          id: record.id,
-          date: record.date,
-          weightKg:
-            activeTab.field === "weightKg" ? undefined : record.weightKg,
-          heightCm:
-            activeTab.field === "heightCm" ? undefined : record.heightCm,
-          headCircumferenceCm:
-            activeTab.field === "headCircumferenceCm"
-              ? undefined
-              : record.headCircumferenceCm,
-          chestCircumferenceCm:
-            activeTab.field === "chestCircumferenceCm"
-              ? undefined
-              : record.chestCircumferenceCm,
-        });
-      } catch (error) {
-        console.error("Failed to delete growth record field", error);
-        if (Platform.OS === "web") {
-          window.alert("削除に失敗しました。時間をおいて再度お試しください。");
-        } else {
-          Alert.alert("削除に失敗しました", "時間をおいて再度お試しください。");
-        }
-      }
-    };
-
-    if (Platform.OS === "web") {
-      const ok = window.confirm(
-        `${activeTab.label}の記録を削除します。よろしいですか？`
-      );
-      if (!ok) return;
-      deleteRecord();
-      return;
-    }
-
-    Alert.alert(
-      "削除しますか？",
-      `${activeTab.label}の記録を削除します。よろしいですか？`,
-      [
-        { text: "キャンセル", style: "cancel" },
-        {
-          text: "削除",
-          style: "destructive",
-          onPress: deleteRecord,
-        },
-      ]
-    );
-  };
-
   const renderItem = ({ item }: { item: GrowthRecord }) => {
     const value = item[activeTab.field];
     return (
@@ -213,12 +145,16 @@ const GrowthScreen: React.FC<Props> = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteField(item)}
+          style={styles.editButton}
+          onPress={() =>
+            rootNavigation.navigate("GrowthRecordInput", {
+              recordId: item.id,
+            })
+          }
           accessibilityRole="button"
-          accessibilityLabel={`${activeTab.label}の記録を削除`}
+          accessibilityLabel={`${activeTab.label}の記録を編集`}
         >
-          <Text style={styles.deleteButtonText}>削除</Text>
+          <Text style={styles.editButtonText}>編集</Text>
         </TouchableOpacity>
       </View>
     );
@@ -437,13 +373,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.textPrimary,
   },
-  deleteButton: {
+  editButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  deleteButtonText: {
+  editButtonText: {
     fontSize: 13,
-    color: COLORS.sunday,
+    color: COLORS.textSecondary,
   },
   empty: {
     fontSize: 16,

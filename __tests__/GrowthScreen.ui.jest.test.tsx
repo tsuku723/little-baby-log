@@ -1,16 +1,10 @@
 import React from "react";
 import renderer, { act } from "react-test-renderer";
-import { Alert, Platform, Text } from "react-native";
-
-if (typeof (global as any).window === "undefined") {
-  (global as any).window = {};
-}
+import { Text } from "react-native";
 
 let mockUser: any = null;
 let mockRecords: any[] = [];
 let mockLoading = false;
-const mockUpsert = jest.fn(async () => undefined);
-const mockRemove = jest.fn(async () => undefined);
 const mockNavigate = jest.fn();
 const mockGrowthChartProps = jest.fn();
 
@@ -22,8 +16,6 @@ jest.mock("@/state/GrowthRecordsContext", () => ({
   useGrowthRecords: () => ({
     loading: mockLoading,
     records: mockRecords,
-    upsert: mockUpsert,
-    remove: mockRemove,
   }),
 }));
 
@@ -106,18 +98,11 @@ const allTexts = (tree: any): string[] =>
 jest.setTimeout(20000);
 
 describe("GrowthScreen UI", () => {
-  const originalPlatformOS = Platform.OS;
-
   beforeEach(() => {
     jest.clearAllMocks();
     mockUser = baseUser();
     mockRecords = [];
     mockLoading = false;
-    Platform.OS = originalPlatformOS;
-  });
-
-  afterAll(() => {
-    Platform.OS = originalPlatformOS;
   });
 
   test("項目タブ切り替え: 選択項目を持つ記録のみが日付降順で表示される", async () => {
@@ -228,7 +213,7 @@ describe("GrowthScreen UI", () => {
   test("記録カードタップでGrowthRecordInputへrecordId付きで遷移する", async () => {
     mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
     const tree = await renderScreen();
-    // カード本体（削除ボタンではない方）を探す
+    // カード本体（編集ボタンではない方）を探す
     const cardMain = tree.root
       .findAllByProps({ accessibilityRole: "button" })
       .find(
@@ -262,264 +247,42 @@ describe("GrowthScreen UI", () => {
     );
   });
 
-  describe("削除処理", () => {
-    const findDeleteButton = (tree: any) =>
+  describe("編集ボタン", () => {
+    const findEditButton = (tree: any, label: string) =>
       tree.root
-        .findAllByProps({ accessibilityLabel: "体重の記録を削除" })
+        .findAllByProps({ accessibilityLabel: label })
         .find((n: any) => typeof n.props.onPress === "function");
 
-    test("他項目も持つ記録: 削除対象フィールドのみundefinedにしてupsertされる（レコードは残る）", async () => {
-      mockRecords = [
-        record({ id: "r1", date: "2026-01-01", weightKg: 3, heightCm: 55 }),
-      ];
-      Platform.OS = "web";
-      (window as any).confirm = jest.fn().mockReturnValue(true);
+    test("右端の編集ボタンタップでGrowthRecordInputへrecordId付きで遷移する", async () => {
+      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
       const tree = await renderScreen();
 
       await act(async () => {
-        await findDeleteButton(tree).props.onPress();
+        findEditButton(tree, "体重の記録を編集").props.onPress();
       });
 
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "r1",
-          date: "2026-01-01",
-          weightKg: undefined,
-          heightCm: 55,
-        })
-      );
-      expect(mockRemove).not.toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith("GrowthRecordInput", {
+        recordId: "r1",
+      });
     });
 
-    test("身長タブで削除: heightCmのみundefinedにし他フィールドは保持される", async () => {
+    test("項目タブに応じてアクセシビリティラベルが切り替わる", async () => {
       mockRecords = [
-        record({
-          id: "r1",
-          date: "2026-01-01",
-          weightKg: 3,
-          heightCm: 55,
-          headCircumferenceCm: 35,
-          chestCircumferenceCm: 33,
-        }),
+        record({ id: "r1", date: "2026-01-01", weightKg: 3, heightCm: 55 }),
       ];
-      Platform.OS = "web";
-      (window as any).confirm = jest.fn().mockReturnValue(true);
       const tree = await renderScreen();
 
       await act(async () => {
         findTabByLabel(tree, "身長").props.onPress();
       });
 
-      const deleteButton = tree.root
-        .findAllByProps({ accessibilityLabel: "身長の記録を削除" })
-        .find((n: any) => typeof n.props.onPress === "function");
       await act(async () => {
-        await deleteButton.props.onPress();
+        findEditButton(tree, "身長の記録を編集").props.onPress();
       });
 
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "r1",
-          date: "2026-01-01",
-          weightKg: 3,
-          heightCm: undefined,
-          headCircumferenceCm: 35,
-          chestCircumferenceCm: 33,
-        })
-      );
-      expect(mockRemove).not.toHaveBeenCalled();
-    });
-
-    test("胸囲タブで削除: chestCircumferenceCmのみundefinedにし他フィールドは保持される", async () => {
-      mockRecords = [
-        record({
-          id: "r1",
-          date: "2026-01-01",
-          weightKg: 3,
-          heightCm: 55,
-          headCircumferenceCm: 35,
-          chestCircumferenceCm: 33,
-        }),
-      ];
-      Platform.OS = "web";
-      (window as any).confirm = jest.fn().mockReturnValue(true);
-      const tree = await renderScreen();
-
-      await act(async () => {
-        findTabByLabel(tree, "胸囲").props.onPress();
+      expect(mockNavigate).toHaveBeenCalledWith("GrowthRecordInput", {
+        recordId: "r1",
       });
-
-      const deleteButton = tree.root
-        .findAllByProps({ accessibilityLabel: "胸囲の記録を削除" })
-        .find((n: any) => typeof n.props.onPress === "function");
-      await act(async () => {
-        await deleteButton.props.onPress();
-      });
-
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "r1",
-          date: "2026-01-01",
-          weightKg: 3,
-          heightCm: 55,
-          headCircumferenceCm: 35,
-          chestCircumferenceCm: undefined,
-        })
-      );
-      expect(mockRemove).not.toHaveBeenCalled();
-    });
-
-    test("頭囲タブで削除: headCircumferenceCmのみundefinedにし他フィールドは保持される", async () => {
-      mockRecords = [
-        record({
-          id: "r1",
-          date: "2026-01-01",
-          weightKg: 3,
-          heightCm: 55,
-          headCircumferenceCm: 35,
-          chestCircumferenceCm: 33,
-        }),
-      ];
-      Platform.OS = "web";
-      (window as any).confirm = jest.fn().mockReturnValue(true);
-      const tree = await renderScreen();
-
-      await act(async () => {
-        findTabByLabel(tree, "頭囲").props.onPress();
-      });
-
-      const deleteButton = tree.root
-        .findAllByProps({ accessibilityLabel: "頭囲の記録を削除" })
-        .find((n: any) => typeof n.props.onPress === "function");
-      await act(async () => {
-        await deleteButton.props.onPress();
-      });
-
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "r1",
-          date: "2026-01-01",
-          weightKg: 3,
-          heightCm: 55,
-          headCircumferenceCm: undefined,
-          chestCircumferenceCm: 33,
-        })
-      );
-      expect(mockRemove).not.toHaveBeenCalled();
-    });
-
-    test("選択項目のみの記録: removeが呼ばれレコードごと削除される", async () => {
-      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
-      Platform.OS = "web";
-      (window as any).confirm = jest.fn().mockReturnValue(true);
-      const tree = await renderScreen();
-
-      await act(async () => {
-        await findDeleteButton(tree).props.onPress();
-      });
-
-      expect(mockRemove).toHaveBeenCalledWith("r1");
-      expect(mockUpsert).not.toHaveBeenCalled();
-    });
-
-    test("Web: window.confirmでキャンセルした場合は削除処理が呼ばれない", async () => {
-      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
-      Platform.OS = "web";
-      (window as any).confirm = jest.fn().mockReturnValue(false);
-      const tree = await renderScreen();
-
-      await act(async () => {
-        await findDeleteButton(tree).props.onPress();
-      });
-
-      expect(mockRemove).not.toHaveBeenCalled();
-      expect(mockUpsert).not.toHaveBeenCalled();
-    });
-
-    test("ネイティブ: Alert.alertで確認ダイアログが出て「削除」選択時に削除される", async () => {
-      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
-      Platform.OS = "ios";
-      const alertSpy = jest
-        .spyOn(Alert, "alert")
-        .mockImplementation((_title, _msg, buttons) => {
-          const deleteButton = buttons?.find((b) => b.text === "削除");
-          deleteButton?.onPress?.();
-        });
-      const tree = await renderScreen();
-
-      await act(async () => {
-        await findDeleteButton(tree).props.onPress();
-      });
-
-      expect(alertSpy).toHaveBeenCalled();
-      expect(mockRemove).toHaveBeenCalledWith("r1");
-    });
-
-    test("ネイティブ: キャンセル選択時は削除処理が呼ばれない", async () => {
-      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
-      Platform.OS = "ios";
-      jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
-      const tree = await renderScreen();
-
-      await act(async () => {
-        await findDeleteButton(tree).props.onPress();
-      });
-
-      expect(mockRemove).not.toHaveBeenCalled();
-      expect(mockUpsert).not.toHaveBeenCalled();
-    });
-
-    test("削除処理が失敗した場合、Webでエラーアラートが表示される", async () => {
-      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
-      mockRemove.mockRejectedValueOnce(new Error("fail"));
-      Platform.OS = "web";
-      (window as any).confirm = jest.fn().mockReturnValue(true);
-      const alertSpy = jest.fn();
-      (window as any).alert = alertSpy;
-      const errorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => undefined);
-      const tree = await renderScreen();
-
-      await act(async () => {
-        await findDeleteButton(tree).props.onPress();
-      });
-
-      expect(alertSpy).toHaveBeenCalledWith(
-        "削除に失敗しました。時間をおいて再度お試しください。"
-      );
-      expect(errorSpy).toHaveBeenCalled();
-    });
-
-    test("削除処理が失敗した場合、ネイティブでエラーアラートが表示される", async () => {
-      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
-      mockRemove.mockRejectedValueOnce(new Error("fail"));
-      Platform.OS = "ios";
-      const alertSpy = jest
-        .spyOn(Alert, "alert")
-        .mockImplementation((_title, _msg, buttons) => {
-          const deleteButton = buttons?.find((b) => b.text === "削除");
-          deleteButton?.onPress?.();
-        });
-      const errorSpy = jest
-        .spyOn(console, "error")
-        .mockImplementation(() => undefined);
-      const tree = await renderScreen();
-
-      await act(async () => {
-        await findDeleteButton(tree).props.onPress();
-      });
-
-      expect(alertSpy).toHaveBeenCalledWith(
-        "削除しますか？",
-        expect.any(String),
-        expect.any(Array)
-      );
-      expect(alertSpy).toHaveBeenCalledWith(
-        "削除に失敗しました",
-        "時間をおいて再度お試しください。"
-      );
-      expect(errorSpy).toHaveBeenCalled();
     });
   });
 });
