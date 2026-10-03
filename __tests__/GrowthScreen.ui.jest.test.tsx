@@ -217,7 +217,6 @@ describe("GrowthScreen UI", () => {
   test("記録カードタップでGrowthRecordInputへrecordId付きで遷移する", async () => {
     mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
     const tree = await renderScreen();
-    // カード本体（編集ボタンではない方）を探す
     const cardMain = tree.root
       .findAllByProps({ accessibilityRole: "button" })
       .find(
@@ -292,45 +291,6 @@ describe("GrowthScreen UI", () => {
       const tree = await renderScreen();
       const texts = allTexts(tree);
       expect(texts.some((t) => t.includes("ヶ月"))).toBe(false);
-    });
-  });
-
-  describe("編集ボタン", () => {
-    const findEditButton = (tree: any, label: string) =>
-      tree.root
-        .findAllByProps({ accessibilityLabel: label })
-        .find((n: any) => typeof n.props.onPress === "function");
-
-    test("右端の編集ボタンタップでGrowthRecordInputへrecordId付きで遷移する", async () => {
-      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
-      const tree = await renderScreen();
-
-      await act(async () => {
-        findEditButton(tree, "体重の記録を編集").props.onPress();
-      });
-
-      expect(mockNavigate).toHaveBeenCalledWith("GrowthRecordInput", {
-        recordId: "r1",
-      });
-    });
-
-    test("項目タブに応じてアクセシビリティラベルが切り替わる", async () => {
-      mockRecords = [
-        record({ id: "r1", date: "2026-01-01", weightKg: 3, heightCm: 55 }),
-      ];
-      const tree = await renderScreen();
-
-      await act(async () => {
-        findTabByLabel(tree, "身長").props.onPress();
-      });
-
-      await act(async () => {
-        findEditButton(tree, "身長の記録を編集").props.onPress();
-      });
-
-      expect(mockNavigate).toHaveBeenCalledWith("GrowthRecordInput", {
-        recordId: "r1",
-      });
     });
   });
 });

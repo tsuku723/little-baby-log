@@ -143,59 +143,45 @@ const GrowthScreen: React.FC<Props> = () => {
       }
     }
     return (
-      <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.cardMain}
-          onPress={() =>
-            rootNavigation.navigate("GrowthRecordInput", {
-              recordId: item.id,
-            })
-          }
-          accessibilityRole="button"
-        >
-          <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
-          {ageInfo ? (
-            <View style={styles.ageBadgeRow}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() =>
+          rootNavigation.navigate("GrowthRecordInput", {
+            recordId: item.id,
+          })
+        }
+        accessibilityRole="button"
+      >
+        <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
+        {ageInfo ? (
+          <View style={styles.ageBadgeRow}>
+            <AgeBadge
+              label={ageInfo.chronological.formatted}
+              variant="chronological"
+            />
+            {ageInfo.flags.showMode === "gestational" &&
+            ageInfo.gestational.formatted ? (
               <AgeBadge
-                label={ageInfo.chronological.formatted}
-                variant="chronological"
+                label={`在胎 ${ageInfo.gestational.formatted}`}
+                variant="gestational"
               />
-              {ageInfo.flags.showMode === "gestational" &&
-              ageInfo.gestational.formatted ? (
-                <AgeBadge
-                  label={`在胎 ${ageInfo.gestational.formatted}`}
-                  variant="gestational"
-                />
-              ) : null}
-              {ageInfo.corrected.visible && ageInfo.corrected.formatted ? (
-                <AgeBadge
-                  label={`修正 ${ageInfo.corrected.formatted}`}
-                  variant="corrected"
-                />
-              ) : null}
-            </View>
-          ) : null}
-          <View style={styles.cardValueRow}>
-            <Text style={styles.cardValueLabel}>{activeTab.label}</Text>
-            <Text style={styles.cardValue}>
-              {typeof value === "number" ? value.toFixed(1) : ""}
-              {activeTab.unit}
-            </Text>
+            ) : null}
+            {ageInfo.corrected.visible && ageInfo.corrected.formatted ? (
+              <AgeBadge
+                label={`修正 ${ageInfo.corrected.formatted}`}
+                variant="corrected"
+              />
+            ) : null}
           </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() =>
-            rootNavigation.navigate("GrowthRecordInput", {
-              recordId: item.id,
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel={`${activeTab.label}の記録を編集`}
-        >
-          <Text style={styles.editButtonText}>編集</Text>
-        </TouchableOpacity>
-      </View>
+        ) : null}
+        <View style={styles.cardValueRow}>
+          <Text style={styles.cardValueLabel}>{activeTab.label}</Text>
+          <Text style={styles.cardValue}>
+            {typeof value === "number" ? value.toFixed(1) : ""}
+            {activeTab.unit}
+          </Text>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -391,17 +377,11 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: COLORS.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 12,
-    gap: 4,
-  },
-  cardMain: {
-    flex: 1,
     gap: 6,
   },
   cardDate: {
@@ -426,14 +406,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.textPrimary,
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  editButtonText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
   },
   empty: {
     fontSize: 16,
