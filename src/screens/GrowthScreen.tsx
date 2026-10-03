@@ -12,6 +12,7 @@ import {
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import AgeBadge from "@/components/AgeBadge";
 import AppText from "@/components/AppText";
 import GrowthChart, { MEASUREMENT_FIELD } from "@/components/GrowthChart";
 import UserAvatar from "@/components/UserAvatar";
@@ -25,6 +26,7 @@ import {
 import { GrowthRecord, useActiveUser } from "@/state/AppStateContext";
 import { useGrowthRecords } from "@/state/GrowthRecordsContext";
 import {
+  calculateAgeInfo,
   toDecimalMonths,
   toIsoDateString,
   toUtcDateOnly,
@@ -126,37 +128,63 @@ const GrowthScreen: React.FC<Props> = () => {
 
   const renderItem = ({ item }: { item: GrowthRecord }) => {
     const value = item[activeTab.field];
+    let ageInfo: ReturnType<typeof calculateAgeInfo> | null = null;
+    if (user?.birthDate) {
+      try {
+        ageInfo = calculateAgeInfo({
+          targetDate: item.date,
+          birthDate: user.birthDate,
+          dueDate: user.dueDate,
+          showCorrectedUntilMonths: user.settings.showCorrectedUntilMonths,
+          ageFormat: user.settings.ageFormat,
+        });
+      } catch {
+        ageInfo = null;
+      }
+    }
     return (
-      <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.cardMain}
-          onPress={() =>
-            rootNavigation.navigate("GrowthRecordInput", {
-              recordId: item.id,
-            })
-          }
-          accessibilityRole="button"
-        >
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() =>
+          rootNavigation.navigate("GrowthRecordInput", {
+            recordId: item.id,
+          })
+        }
+        accessibilityRole="button"
+      >
+        <View style={styles.cardDateRow}>
           <Text style={styles.cardDate}>{dateLabel(item.date)}</Text>
-          <Text style={styles.cardValues}>
-            {activeTab.label}{" "}
+          {ageInfo ? (
+            <View style={styles.ageBadgeRow}>
+              <AgeBadge
+                label={ageInfo.chronological.formatted}
+                variant="chronological"
+              />
+              {ageInfo.flags.showMode === "gestational" &&
+              ageInfo.gestational.visible &&
+              ageInfo.gestational.formatted ? (
+                <AgeBadge
+                  label={`在胎 ${ageInfo.gestational.formatted}`}
+                  variant="gestational"
+                />
+              ) : null}
+              {ageInfo.corrected.visible && ageInfo.corrected.formatted ? (
+                <AgeBadge
+                  label={`修正 ${ageInfo.corrected.formatted}`}
+                  variant="corrected"
+                />
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.cardValueRow}>
+          <Text style={styles.cardValueLabel}>{activeTab.label}</Text>
+          <Text style={styles.cardValue}>
             {typeof value === "number" ? value.toFixed(1) : ""}
             {activeTab.unit}
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() =>
-            rootNavigation.navigate("GrowthRecordInput", {
-              recordId: item.id,
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel={`${activeTab.label}の記録を編集`}
-        >
-          <Text style={styles.editButtonText}>編集</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -352,34 +380,41 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: COLORS.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 12,
-    gap: 4,
+    gap: 6,
   },
-  cardMain: {
-    flex: 1,
-    gap: 4,
+  cardDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
   },
   cardDate: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  ageBadgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  cardValueRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+  },
+  cardValueLabel: {
     fontSize: 13,
     color: COLORS.textSecondary,
   },
-  cardValues: {
-    fontSize: 15,
+  cardValue: {
+    fontSize: 18,
+    fontWeight: "700",
     color: COLORS.textPrimary,
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  editButtonText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
   },
   empty: {
     fontSize: 16,

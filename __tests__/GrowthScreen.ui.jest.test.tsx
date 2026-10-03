@@ -56,6 +56,10 @@ const baseUser = (overrides: Partial<any> = {}) => ({
   dueDate: null,
   gender: null,
   profilePhotoPath: undefined,
+  settings: {
+    ageFormat: "md",
+    showCorrectedUntilMonths: null,
+  },
   ...overrides,
 });
 
@@ -213,7 +217,6 @@ describe("GrowthScreen UI", () => {
   test("記録カードタップでGrowthRecordInputへrecordId付きで遷移する", async () => {
     mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
     const tree = await renderScreen();
-    // カード本体（編集ボタンではない方）を探す
     const cardMain = tree.root
       .findAllByProps({ accessibilityRole: "button" })
       .find(
@@ -247,42 +250,47 @@ describe("GrowthScreen UI", () => {
     );
   });
 
-  describe("編集ボタン", () => {
-    const findEditButton = (tree: any, label: string) =>
-      tree.root
-        .findAllByProps({ accessibilityLabel: label })
-        .find((n: any) => typeof n.props.onPress === "function");
-
-    test("右端の編集ボタンタップでGrowthRecordInputへrecordId付きで遷移する", async () => {
-      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 3 })];
+  describe("一覧カードの月齢表示", () => {
+    test("通常: 暦月齢のみ表示される", async () => {
+      mockUser = baseUser({ birthDate: "2025-01-01", dueDate: null });
+      mockRecords = [record({ id: "r1", date: "2025-06-07", weightKg: 5 })];
       const tree = await renderScreen();
-
-      await act(async () => {
-        findEditButton(tree, "体重の記録を編集").props.onPress();
-      });
-
-      expect(mockNavigate).toHaveBeenCalledWith("GrowthRecordInput", {
-        recordId: "r1",
-      });
+      expect(allTexts(tree)).toContain("5ヶ月6日");
     });
 
-    test("項目タブに応じてアクセシビリティラベルが切り替わる", async () => {
-      mockRecords = [
-        record({ id: "r1", date: "2026-01-01", weightKg: 3, heightCm: 55 }),
-      ];
+    test("修正対象期間内: 暦月齢と修正月齢が併記される", async () => {
+      mockUser = baseUser({ birthDate: "2025-01-01", dueDate: "2025-03-01" });
+      mockRecords = [record({ id: "r1", date: "2025-04-01", weightKg: 5 })];
       const tree = await renderScreen();
+      const texts = allTexts(tree);
+      expect(texts).toContain("3ヶ月0日");
+      expect(texts).toContain("修正 1ヶ月0日");
+    });
 
-      await act(async () => {
-        findTabByLabel(tree, "身長").props.onPress();
-      });
+    test("出産予定日前: 暦月齢と在胎週数が併記される", async () => {
+      mockUser = baseUser({ birthDate: "2025-01-01", dueDate: "2025-03-01" });
+      mockRecords = [record({ id: "r1", date: "2025-01-15", weightKg: 5 })];
+      const tree = await renderScreen();
+      const texts = allTexts(tree);
+      expect(texts).toContain("0ヶ月14日");
+      expect(texts).toContain("在胎 33週4日");
+    });
 
-      await act(async () => {
-        findEditButton(tree, "身長の記録を編集").props.onPress();
-      });
+    test("対象外（正産期で出産予定日設定あり）: 暦月齢のみ表示される", async () => {
+      mockUser = baseUser({ birthDate: "2025-01-01", dueDate: "2025-01-05" });
+      mockRecords = [record({ id: "r1", date: "2025-06-07", weightKg: 5 })];
+      const tree = await renderScreen();
+      const texts = allTexts(tree);
+      expect(texts).toContain("5ヶ月6日");
+      expect(texts.some((t) => t.includes("在胎"))).toBe(false);
+    });
 
-      expect(mockNavigate).toHaveBeenCalledWith("GrowthRecordInput", {
-        recordId: "r1",
-      });
+    test("ユーザー・生年月日未設定時: 月齢は表示されない", async () => {
+      mockUser = null;
+      mockRecords = [record({ id: "r1", date: "2026-01-01", weightKg: 5 })];
+      const tree = await renderScreen();
+      const texts = allTexts(tree);
+      expect(texts.some((t) => t.includes("ヶ月"))).toBe(false);
     });
   });
 });
