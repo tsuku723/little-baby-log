@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   cardValue: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "700",
     color: COLORS.textPrimary,
   },
