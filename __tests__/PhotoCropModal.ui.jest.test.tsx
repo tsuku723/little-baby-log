@@ -94,6 +94,29 @@ describe("PhotoCropModal", () => {
     expect(image.props.source.uri).toBe("file://image.jpg");
   });
 
+  test("ジェスチャーは移動・拡大しない領域全体のViewで受ける（拡大・移動後もタッチが届く）", async () => {
+    const tree = await renderModal();
+    await triggerLayout(tree, 300, 300);
+
+    const { GestureDetector } = require("react-native-gesture-handler");
+    const detector = tree.root.findByType(GestureDetector);
+    const gestureArea = detector.findByProps({
+      testID: "photo-crop-gesture-area",
+    });
+    const flatStyle = Object.assign(
+      {},
+      ...([] as any[]).concat(gestureArea.props.style)
+    );
+    expect(flatStyle).toMatchObject({
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    });
+    expect(flatStyle.transform).toBeUndefined();
+  });
+
   test("maskShape=circleの場合、枠線にborderRadiusが付与される", async () => {
     const tree = await renderModal({ maskShape: "circle" });
     await triggerLayout(tree, 300, 300);

@@ -312,9 +312,16 @@ const PhotoCropModal: React.FC<Props> = ({
         >
           {isReady ? (
             <>
-              <View style={styles.imageBleedLayer}>
-                <GestureDetector gesture={composedGesture}>
-                  <Animated.View style={[styles.panLayer, translateStyle]}>
+              {/* ジェスチャーは移動・拡大しない領域全体のViewで受ける。
+                  移動するView側で受けると、拡大して端まで移動した際に
+                  当たり判定が枠の外へ出てタッチが届かなくなる */}
+              <GestureDetector gesture={composedGesture}>
+                <View
+                  testID="photo-crop-gesture-area"
+                  style={styles.imageBleedLayer}
+                  collapsable={false}
+                >
+                  <Animated.View style={translateStyle}>
                     <Animated.View style={scaleStyle}>
                       <Image
                         source={{ uri: previewUri ?? imageUri }}
@@ -322,8 +329,8 @@ const PhotoCropModal: React.FC<Props> = ({
                       />
                     </Animated.View>
                   </Animated.View>
-                </GestureDetector>
-              </View>
+                </View>
+              </GestureDetector>
               <View
                 pointerEvents="none"
                 style={[
@@ -431,7 +438,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  panLayer: {},
   dimBand: {
     position: "absolute",
     backgroundColor: DIM_OVERLAY_COLOR,
