@@ -33,6 +33,7 @@ describe("content/legal/ja exports", () => {
     const aboutText = getAboutTextJa("1.0.0");
     expect(aboutText).toContain("# このアプリについて");
     expect(aboutText).toContain("## 修正月齢・在胎週数の計算方法について");
+    expect(aboutText).toContain("## 成長曲線グラフの基準線について");
     expect(aboutText).toContain(LEGAL_META.contactEmail);
     expect(aboutText).toContain("Version 1.0.0");
   });
