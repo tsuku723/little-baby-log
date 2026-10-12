@@ -138,6 +138,22 @@ const PhotoCropModal: React.FC<Props> = ({
           );
           translateX.value = clamp(translateX.value, -bounds.maxX, bounds.maxX);
           translateY.value = clamp(translateY.value, -bounds.maxY, bounds.maxY);
+        })
+        .onFinalize(() => {
+          "worklet";
+          // ジェスチャーが中断された場合も、拡大率・位置を枠を覆う範囲に収めた状態で確定させる
+          const scale = clamp(userScale.value, MIN_USER_SCALE, MAX_USER_SCALE);
+          userScale.value = scale;
+          pinchStartScale.value = scale;
+          const bounds = calculatePanBounds(
+            imageWidth,
+            imageHeight,
+            frame,
+            baseScale,
+            scale
+          );
+          translateX.value = clamp(translateX.value, -bounds.maxX, bounds.maxX);
+          translateY.value = clamp(translateY.value, -bounds.maxY, bounds.maxY);
         }),
     [
       baseScale,
@@ -156,6 +172,12 @@ const PhotoCropModal: React.FC<Props> = ({
       Gesture.Pan()
         .minPointers(1)
         .maxPointers(1)
+        // maxPointers(1)だけでは、パン中に2本目の指が触れてもPanがACTIVEのまま残り、
+        // ピンチや以降のタッチを受け付けなくなることがあるため明示的にfailさせる
+        .onTouchesDown((e, manager) => {
+          "worklet";
+          if (e.numberOfTouches > 1) manager.fail();
+        })
         .onStart(() => {
           panStart.value = { x: translateX.value, y: translateY.value };
         })
@@ -290,9 +312,16 @@ const PhotoCropModal: React.FC<Props> = ({
         >
           {isReady ? (
             <>
-              <View style={styles.imageBleedLayer}>
-                <GestureDetector gesture={composedGesture}>
-                  <Animated.View style={[styles.panLayer, translateStyle]}>
+              {/* ジェスチャーは移動・拡大しない領域全体のViewで受ける。
+                  移動するView側で受けると、拡大して端まで移動した際に
+                  当たり判定が枠の外へ出てタッチが届かなくなる */}
+              <GestureDetector gesture={composedGesture}>
+                <View
+                  testID="photo-crop-gesture-area"
+                  style={styles.imageBleedLayer}
+                  collapsable={false}
+                >
+                  <Animated.View style={translateStyle}>
                     <Animated.View style={scaleStyle}>
                       <Image
                         source={{ uri: previewUri ?? imageUri }}
@@ -300,8 +329,8 @@ const PhotoCropModal: React.FC<Props> = ({
                       />
                     </Animated.View>
                   </Animated.View>
-                </GestureDetector>
-              </View>
+                </View>
+              </GestureDetector>
               <View
                 pointerEvents="none"
                 style={[
@@ -409,7 +438,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  panLayer: {},
   dimBand: {
     position: "absolute",
     backgroundColor: DIM_OVERLAY_COLOR,
